@@ -8,6 +8,30 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-26] SHIPPED 94026741 2026-08-21: two tests no longer fail at random, so a red suite can be
+  trusted again. They failed roughly one run in twenty and passed alone, which is worse than a test
+  that always fails because it teaches everyone to shrug and re run; that habit had already caused
+  one verification step in this project to record a pass when the failure it saw was the random one.
+  Cause was shared state rather than anything wrong with the mod: several services live in one slot
+  the whole program can see, each test aimed that slot at its own scratch folder, tests in different
+  files run at the same time, and a test would read through the slot into a folder another had
+  already cleaned up. The mod itself sets these once at startup and never moves them, so no player
+  was ever affected. Fixed by clearing the whole slot, adding the tidy up method one service never
+  had, making every test put back what it borrows, and grouping the handful of contending test files
+  so they no longer run side by side. Two guard tests stop it returning. Verified by twenty
+  consecutive full suite runs with no re running, plus three against the full build gate.
+  (Tech: the ledger's original diagnosis was PARTLY WRONG and is corrected here.
+  ConfigurationCoordinatorPathTests does not touch UserThemeServiceSingleton at all; it races via
+  CharacterServiceSingleton reached through ConfigBasedSpriteManager's back compatible constructor,
+  and the real defect was Reset clearing _instance but not _modPath, leaving a process wide pointer
+  at a deleted temp folder even for classes that reset correctly. JobClassServiceSingleton had no
+  Reset at all. NpcThemePipelineTests, HotReloadTests, ConfigurationManagerTests and
+  ConfigurationFormDropdownTests now reset in Dispose; CharacterRowBuilderBinIntegrationTests and
+  ConfigurationCoordinatorPathTests joined the RegistryTests collection. SingletonHygieneGuardTests
+  pins both rules, one reflecting over private static fields after Reset, one scanning test sources
+  for an Initialize with no matching Reset; both proven able to fail before being trusted.
+  Production never calls Reset so behaviour is unchanged. Suite 1359 of 1359.)
+
 - [CC-27] SHIPPED 157bb593 2026-08-21: every rank of every monster can now be recoloured in the
   theme editor, not just the first one. Sixteen families ship with three ranks each, so forty
   eight monsters appear in the config dropdowns, but the editor listed one entry per family and

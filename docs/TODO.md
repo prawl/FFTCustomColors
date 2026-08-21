@@ -162,7 +162,14 @@ that checklist.
   section apply, RelativeShadeGenerator, one Data/SectionMappings entry for the zone shape
   {1-4}{5-7}{8-10}{11-14}{15}, and previews decoded from the sheet's own 4bpp pixels rather than a
   staged HD BMP. Evidence, coverage table and controls in docs/WEAPON_COLOR_CC_FINDINGS.md; the
-  mechanism row is [wep-spr-palette-block] in the FFTLivingWeapons LIVE_LEDGER.)
+  mechanism row is [wep-spr-palette-block] in the FFTLivingWeapons LIVE_LEDGER. ANSWERED
+  2026-08-21 by the sibling session, owner live run: NO RESTART is needed. The game re reads
+  file 71 on every battle load and does not keep a decoded copy in video memory, proven by a hot
+  swap between two battles in one launch, three reads all served from the override and zero from
+  the game's own copy. So the slider applies at the next battle. UI wording must say takes effect
+  NEXT BATTLE and not immediately, because it does not change the battle already on screen. This
+  covers file 71 only; menu icon art comes from the g2d container which is read once per launch,
+  so if the slider ever touches menu art that half is untested and may still need a relaunch.)
 - [CC-24] 2026-08-19: Make the weapon recolour behave when Living Weapons is installed too. Both
   mods write the same sprite sheet and there is no way to merge one, so whichever loads last
   silently erases the other and the player gets no warning. Instead of competing, read whichever
@@ -170,27 +177,6 @@ that checklist.
   mod doing the half it is good at. (Tech: detect the file owner via IFFTOModPackManager and take
   their baked battle_wep_spr.bin as the rebuild base in place of sprites_original when they own it,
   else vanilla. Depends on CC-23. Prior art for the detect half is GenericJobsDetector.)
-
-- [CC-26] 2026-08-19: Chase down a test that fails at random. During the CC-23 ledger work the
-  suite failed once on ApplyConfiguration_UsesCorrectModPath, then passed twice on re-run with not
-  a single character changed in between. A test that only sometimes passes is worse than one that
-  always fails, because it trains everyone to shrug and re-run, and the next real breakage gets
-  shrugged at too. Find out whether it is the test or the code that is unreliable. (Tech:
-  Tests/Core/ModComponents/ConfigurationCoordinatorPathTests.cs:171, seen 2026-08-19 on a
-  docs-only working tree, 1 fail then 1328 pass, then 1329 pass twice. Prime suspects are shared
-  temp-directory state or path casing between tests rather than a production defect, but that is a
-  guess and needs proving. If it turns out to be a real race in the coordinator's path resolution
-  it is a user-facing bug, not a test bug. SECOND OFFENDER folded in 2026-08-21: three separate
-  agents have now also seen
-  Tests/Configuration/CharacterRowBuilderBinIntegrationTests fail once and pass in isolation,
-  twice on TryLoadGenericFromBinFile_Should_Use_External_Palette_For_UserThemes and once on
-  AddStoryCharacterRow_ShouldIncludeUserThemes_WhenUserThemesExist, each time a temp directory
-  file lock or leftover UserThemes.json during teardown under parallel execution. Two tests in
-  different files failing the same way points at SHARED TEMP STATE across test classes as the
-  single root cause rather than two unrelated bugs, so chase them together. Whatever the fix is,
-  it must make the suite trustworthy enough that a single red is treated as real, because the
-  current habit of re-running has already caused one mutation to be scored as caught when the
-  failure was actually the flake.)
 
 ## Walled (blocked by engine / external)
 
