@@ -8,6 +8,21 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-35] SHIPPED aa53bfb5 2026-08-24: Delita can now be recoloured like any other character. He
+  appears three times in the NPCs section, one entry per story look (chapter 1, chapters 2 and 3,
+  chapter 4), each with owner-calibrated colour sliders, working previews, and themes that the
+  owner verified on screen in battle. His three sprites shared palette colours across body parts
+  (face with arm trim, hair with cape stipple, head with armour, skin with armour), so about
+  thirteen thousand pixels were surgically re-homed across the battle textures and preview sheets
+  so every slider colours exactly one thing; portraits untouched throughout. Chapter 4's hair
+  deliberately stays original by owner choice. The last defect, found live: saved themes applied
+  in the preview but never in game, because the apply path rebuilt lowercased character names
+  with a first-letter capitalizer that mangled CamelCase names; the registry is now the source
+  of truth for casing, with a regression test. (Tech: registry entries DelitaChapter1/23/4 with
+  sprites dily/dily2/dily3 and tex 836 to 841; per-index calibration scaffolding then grouped
+  mappings; four flood-fill/seeded/blanket surgery passes documented as Type C in the hair-fix
+  process doc; changemap.py review tool added; BuildLinked now closes a running game itself.)
+
 - [CC-34] SHIPPED 3d189029 2026-08-24: a typo in any data file the mod ships now fails the build with
   the file named, instead of failing silently in game. Five schemas cover the character registry,
   both job class registries, all section mappings, the theme recipes and the mod metadata; a new

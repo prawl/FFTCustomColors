@@ -77,38 +77,6 @@ that checklist.
     StoryCharacters.json. Separately the baker and the contract test only handled a character's
     FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
     her three appearances.
-- **[CC-35] Add Delita to the NPC roster** (opened 2026-08-24) [BUILDING]
-  - Done means: Delita can be recoloured like any other NPC. He shows up in the NPCs section of
-    the config window as three entries, one per story look (chapter 1, chapters 2 and 3, chapter
-    4), each with a working preview picture and a theme editor entry whose sliders the owner has
-    calibrated from one-slider-per-index scaffolding into real gear sections. (Tech: his sprites
-    are dily, dily2 and dily3, not the guessed dirita names; dily already shipped in
-    sprites_original and the other two bins plus HD BMPs 836 to 841 were imported from the
-    owner's extracted game files, so no pac extraction was needed.)
-  - Verify: NpcRosterContractTests covers all three Delita entries (registry, config property,
-    mapping, preview) and the owner opens the config window, sees the three Delita rows with
-    correct previews, and confirms in the theme editor that each calibrated slider group
-    recolours the intended gear.
-  - Scaffolding landed 2026-08-24 on branch cc35-delita-npc: bins, preview BMPs, registry
-    entries, config wiring, display names, and per-index mappings, suite 1689 green. Waiting on
-    the owner's in-game index to gear calibration pass before the mappings become real sections.
-  - Chapter 1 finished 2026-08-24: the owner calibrated the sliders in game and the mapping now
-    has five real gear sections. One palette colour painted both his face and his arm trim, so
-    recolouring the arms used to tint his temple and jaw; those face pixels were moved onto the
-    skin colour at the pixel level in the battle texture and the preview sheet (910 pixels over
-    four passes, portrait untouched, owner verified on screen). Chapters 2 and 3 and 4 still
-    expose one slider per index and wait on the owner's calibration.
-  - Chapters 2 and 3 finished 2026-08-24, owner verified on screen: four gear sections (Armor,
-    Under Armor, Hair, Skin Color). One palette colour painted both his hair and a scatter of
-    shadow specks on his red tunic, so the tunic specks were moved onto the under armour's own
-    dark red at the pixel level (284 pixels across the texture pair and the preview sheets,
-    portrait untouched). Only chapter 4 remains.
-  - Chapter 4 finished 2026-08-24: three sections (Armor, Cape, Skin Color) after the most
-    tangled calibration of the three. Three pixel level splits untangled shared colours: the
-    cape's stipple left the hair colour, the armour's shading left the skin colours, and the
-    whole head left the armour colours, about ten thousand pixels across the texture pair and
-    preview sheets, portrait untouched every time. Hair on this chapter deliberately stays
-    original by owner choice. Owner live pass underway.
 
 ## Backlog
 
