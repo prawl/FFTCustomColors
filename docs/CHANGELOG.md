@@ -8,6 +8,12 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-34] SHIPPED 3d189029 2026-08-24: a typo in any data file the mod ships now fails the build with
+  the file named, instead of failing silently in game. Five schemas cover the character registry,
+  both job class registries, all section mappings, the theme recipes and the mod metadata; a new
+  data file that belongs to no schema family is itself a build failure, and the BuildLinked and
+  Publish gates refuse to run on bad JSON the same way CI does.
+
 - [CC-31] WONTFIX 2026-08-24: the plan to give story NPCs the game's own faction outfits is
   dropped by owner decision. Four such themes were built and briefly shipped, and a prototype put
   all four faction colours on Ovelia, but on seeing them the owner ruled that NPCs should only

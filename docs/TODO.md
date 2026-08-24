@@ -53,14 +53,6 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
-- **[CC-34] Check every data file the mod ships for shape at build time** (opened 2026-08-24) [BUILDING]
-  - Done means: a typo in any shipped JSON file, a recipe, a registry, a section mapping or the
-    mod's own metadata, fails the test suite with the file named, instead of failing silently in
-    game; and a new data file cannot be added without being covered, because an unregistered file
-    is itself a failure. (Tech: JsonSchema.Net in the test project only, schemas under
-    Tests/Data/Schemas, JsonSchemaContractTests walks ColorMod and validates each family.)
-  - Verify: the suite goes red when a hex colour in a recipe is deliberately broken and green when
-    it is restored, proven once during the build; CI runs the same suite on every push.
 - **[CC-21] Give the twelve story NPCs colour themes of their own** (opened 2026-08-13) [BUILDING]
   - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
     the colours are ones the owner has approved on screen, and choosing a theme actually recolours
