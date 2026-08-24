@@ -273,6 +273,16 @@ that checklist.
   reorder the group blocks in ThemeEditorPanel's dropdown construction and check
   ConfigurationForm's section loading order.)
 
+- [CC-40] 2026-08-24: The near black outline around each sprite was deliberately left out of every
+  character's colour groups, but a Delita experiment showed the outline is not pure black: it
+  carries a faint tint of the armour colour, and letting it follow the armour slider looks better.
+  Go back over every character (generic jobs, story characters, NPCs) and add each sprite's
+  outline index to its main colour group. (Tech: the outline is index 1 on most sprites; the
+  Delita Ch23 try-out was Armor 6,5,4,1 with role outline and uniformHue, reverted pending this
+  sweep. Watch the uniformHue clamp crush on very dark bases documented in SECTION_MAPPINGS.md,
+  and sprites where index 1 doubles as another dark detail tone; the theme editor preview makes
+  each character a quick visual check.)
+
 ## Walled (blocked by engine / external)
 
 - Some story characters (Mustadio, Rapha, Meliadoul, Construct 8 observed) need a game restart
