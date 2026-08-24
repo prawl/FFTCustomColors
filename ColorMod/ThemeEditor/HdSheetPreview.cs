@@ -101,13 +101,16 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             var layout = FrameLayout.For(imagesFolderName);
             var cornerDir = ToCornerDirection(directionIndex);
+            // Each sheet is drawn for one of the game's two humanoid rigs; compositing with
+            // the other rig's arm offsets dislocates the arms (the CC-36 round-3 defect).
+            var walkType = WalkCycleTypes.For(imagesFolderName);
 
             using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, modifiedPalette))
             {
                 var frames = new List<Bitmap>(WalkCycle.BeatCount);
                 for (int phase = 0; phase < WalkCycle.BeatCount; phase++)
                 {
-                    var frame = SheetExtractor.ExtractWalkFrame(themedBmp, cornerDir, layout, phase);
+                    var frame = WalkFrameCompositor.ExtractWalkFrame(themedBmp, cornerDir, layout, phase, walkType);
                     if (frame == null)
                         return null;
                     frames.Add(frame);

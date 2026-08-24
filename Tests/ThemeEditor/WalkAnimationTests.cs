@@ -39,37 +39,143 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             WalkCycle.BeatCount.Should().Be(8);
             WalkCycle.BeatDurationsMs.Should().Equal(100, 133, 167, 133, 100, 133, 167, 133);
 
-            var frontCells = WalkCycle.Front.Select(b => b.BodyCell).ToArray();
+            var frontCells = WalkCycle.Type1Front.Select(b => b.BodyCell).ToArray();
             frontCells.Should().Equal(
                 new Point(0, 1), new Point(6, 0), new Point(5, 0), new Point(6, 0),
                 new Point(0, 1), new Point(1, 1), new Point(2, 1), new Point(1, 1));
 
-            var backCells = WalkCycle.Back.Select(b => b.BodyCell).ToArray();
+            var backCells = WalkCycle.Type1Back.Select(b => b.BodyCell).ToArray();
             backCells.Should().Equal(
                 new Point(5, 1), new Point(4, 1), new Point(3, 1), new Point(4, 1),
                 new Point(5, 1), new Point(6, 1), new Point(0, 2), new Point(6, 1));
 
             // Palindrome identities: beat3 == beat1, beat4 == beat0, beat7 == beat5.
-            WalkCycle.Front[3].Should().Be(WalkCycle.Front[1]);
-            WalkCycle.Front[4].Should().Be(WalkCycle.Front[0]);
-            WalkCycle.Front[7].Should().Be(WalkCycle.Front[5]);
-            WalkCycle.Back[3].Should().Be(WalkCycle.Back[1]);
-            WalkCycle.Back[4].Should().Be(WalkCycle.Back[0]);
-            WalkCycle.Back[7].Should().Be(WalkCycle.Back[5]);
+            WalkCycle.Type1Front[3].Should().Be(WalkCycle.Type1Front[1]);
+            WalkCycle.Type1Front[4].Should().Be(WalkCycle.Type1Front[0]);
+            WalkCycle.Type1Front[7].Should().Be(WalkCycle.Type1Front[5]);
+            WalkCycle.Type1Back[3].Should().Be(WalkCycle.Type1Back[1]);
+            WalkCycle.Type1Back[4].Should().Be(WalkCycle.Type1Back[0]);
+            WalkCycle.Type1Back[7].Should().Be(WalkCycle.Type1Back[5]);
 
             // Spot-check two arm entries exactly.
-            WalkCycle.Front[2].FarArmSource.Should().Be(new Point(64, 160));
-            WalkCycle.Front[2].FarArmOffset.Should().Be(new Point(8, 16));
-            WalkCycle.Front[2].NearArmSource.Should().Be(new Point(112, 160));
-            WalkCycle.Front[2].NearArmOffset.Should().Be(new Point(16, 24));
+            WalkCycle.Type1Front[2].FarArmSource.Should().Be(new Point(64, 160));
+            WalkCycle.Type1Front[2].FarArmOffset.Should().Be(new Point(8, 16));
+            WalkCycle.Type1Front[2].NearArmSource.Should().Be(new Point(112, 160));
+            WalkCycle.Type1Front[2].NearArmOffset.Should().Be(new Point(16, 24));
 
-            WalkCycle.Back[6].FarArmSource.Should().Be(new Point(112, 256));
-            WalkCycle.Back[6].FarArmOffset.Should().Be(new Point(16, 16));
-            WalkCycle.Back[6].NearArmSource.Should().Be(new Point(64, 256));
-            WalkCycle.Back[6].NearArmOffset.Should().Be(new Point(0, 22));
+            WalkCycle.Type1Back[6].FarArmSource.Should().Be(new Point(112, 256));
+            WalkCycle.Type1Back[6].FarArmOffset.Should().Be(new Point(16, 16));
+            WalkCycle.Type1Back[6].NearArmSource.Should().Be(new Point(64, 256));
+            WalkCycle.Type1Back[6].NearArmOffset.Should().Be(new Point(0, 22));
 
-            WalkCycle.For(Direction.SW).Should().BeSameAs(WalkCycle.Front);
-            WalkCycle.For(Direction.NW).Should().BeSameAs(WalkCycle.Back);
+            WalkCycle.For(Direction.SW, WalkCycleType.Type1).Should().BeSameAs(WalkCycle.Type1Front);
+            WalkCycle.For(Direction.NW, WalkCycleType.Type1).Should().BeSameAs(WalkCycle.Type1Back);
+        }
+
+        /// <summary>
+        /// CC-36 defect fix: robed/skirted rigs use the game's TYPE2.SEQ/TYPE2.SHP walk data,
+        /// not TYPE1's. Parsed the same way as TYPE1 (Shishi parser port over the files shipped
+        /// in the FFTPatcher repo): same animations 6/7, same frame indices, same body tiles,
+        /// same arm source tiles, same delays; ONLY the arm destination offsets differ. Applying
+        /// TYPE1 offsets to a TYPE2 sheet is exactly the owner's "dislocated left arm".
+        /// </summary>
+        [Fact]
+        public void WalkCycle_Type2_MatchesAuthoritativeSeqData()
+        {
+            // Body cells and durations are shared with TYPE1 (verified identical in both SHPs).
+            WalkCycle.Type2Front.Select(b => b.BodyCell).Should().Equal(
+                WalkCycle.Type1Front.Select(b => b.BodyCell));
+            WalkCycle.Type2Back.Select(b => b.BodyCell).Should().Equal(
+                WalkCycle.Type1Back.Select(b => b.BodyCell));
+
+            // Arm source tiles are shared too; only the destination offsets move.
+            for (int i = 0; i < WalkCycle.BeatCount; i++)
+            {
+                WalkCycle.Type2Front[i].FarArmSource.Should().Be(WalkCycle.Type1Front[i].FarArmSource);
+                WalkCycle.Type2Front[i].NearArmSource.Should().Be(WalkCycle.Type1Front[i].NearArmSource);
+                WalkCycle.Type2Back[i].FarArmSource.Should().Be(WalkCycle.Type1Back[i].FarArmSource);
+                WalkCycle.Type2Back[i].NearArmSource.Should().Be(WalkCycle.Type1Back[i].NearArmSource);
+            }
+
+            // Palindrome identities hold for TYPE2 as well.
+            WalkCycle.Type2Front[3].Should().Be(WalkCycle.Type2Front[1]);
+            WalkCycle.Type2Front[4].Should().Be(WalkCycle.Type2Front[0]);
+            WalkCycle.Type2Front[7].Should().Be(WalkCycle.Type2Front[5]);
+            WalkCycle.Type2Back[3].Should().Be(WalkCycle.Type2Back[1]);
+            WalkCycle.Type2Back[4].Should().Be(WalkCycle.Type2Back[0]);
+            WalkCycle.Type2Back[7].Should().Be(WalkCycle.Type2Back[5]);
+
+            // Exact TYPE2 arm offsets, pinned against the parsed SEQ/SHP data (SPR coords x2).
+            WalkCycle.Type2Front[0].FarArmOffset.Should().Be(new Point(-2, 18));
+            WalkCycle.Type2Front[0].NearArmOffset.Should().Be(new Point(22, 24));
+            WalkCycle.Type2Front[1].FarArmOffset.Should().Be(new Point(2, 16));
+            WalkCycle.Type2Front[1].NearArmOffset.Should().Be(new Point(18, 24));
+            WalkCycle.Type2Front[2].FarArmOffset.Should().Be(new Point(6, 18));
+            WalkCycle.Type2Front[2].NearArmOffset.Should().Be(new Point(16, 22));
+            WalkCycle.Type2Front[5].FarArmOffset.Should().Be(new Point(0, 16));
+            WalkCycle.Type2Front[5].NearArmOffset.Should().Be(new Point(18, 22));
+            WalkCycle.Type2Front[6].FarArmOffset.Should().Be(new Point(0, 18));
+            WalkCycle.Type2Front[6].NearArmOffset.Should().Be(new Point(20, 22));
+
+            WalkCycle.Type2Back[0].FarArmOffset.Should().Be(new Point(16, 16));
+            WalkCycle.Type2Back[0].NearArmOffset.Should().Be(new Point(0, 24));
+            WalkCycle.Type2Back[1].FarArmOffset.Should().Be(new Point(24, 18));
+            WalkCycle.Type2Back[1].NearArmOffset.Should().Be(new Point(2, 24));
+            WalkCycle.Type2Back[2].FarArmOffset.Should().Be(new Point(20, 20));
+            WalkCycle.Type2Back[2].NearArmOffset.Should().Be(new Point(4, 22));
+            WalkCycle.Type2Back[5].FarArmOffset.Should().Be(new Point(24, 18));
+            WalkCycle.Type2Back[5].NearArmOffset.Should().Be(new Point(-2, 22));
+            WalkCycle.Type2Back[6].FarArmOffset.Should().Be(new Point(24, 18));
+            WalkCycle.Type2Back[6].NearArmOffset.Should().Be(new Point(2, 22));
+
+            WalkCycle.For(Direction.SW, WalkCycleType.Type2).Should().BeSameAs(WalkCycle.Type2Front);
+            WalkCycle.For(Direction.NW, WalkCycleType.Type2).Should().BeSameAs(WalkCycle.Type2Back);
+        }
+
+        /// <summary>
+        /// Pins the per-character animation-type registry. Classification sources, in order:
+        /// (1) the game's own classic BATTLE.BIN sprite-attributes table (fftpack/battle_bin.en.bin
+        /// inside data/classic/0002.en.pac, table at 0x2D748, byte 0 = SHP type, read via the
+        /// FFTPatcher/Shishi format); (2) a socket-position pixel classifier run over every
+        /// shipped HD sheet (arm tile content centroid + candidate offset must land at the
+        /// anatomical socket measured from TYPE1 exemplars) - the two agreed on every character
+        /// with a classic entry; (3) the owner's live pass. Where the owner's list disagreed
+        /// (Bard, Calculator M/F reported good), zoomed per-frame renders show TYPE1 offsets
+        /// detach the fist on back f18, so the data verdict (TYPE2) stands.
+        /// </summary>
+        [Fact]
+        public void WalkCycleTypes_ClassifyEveryRosterCharacterFromGameData()
+        {
+            var type2 = new[]
+            {
+                "Chemist_Male", "Chemist_Female", "WhiteMage_Male", "WhiteMage_Female",
+                "BlackMage_Male", "BlackMage_Female", "TimeMage_Male", "TimeMage_Female",
+                "Summoner_Male", "Summoner_Female", "Mystic_Male", "Mystic_Female",
+                "Mediator_Male", "Mediator_Female", "Geomancer_Male", "Geomancer_Female",
+                "Calculator_Male", "Calculator_Female", "Bard_Male", "Dancer_Female",
+                "Mime_Male", "Mime_Female",
+                "Alma", "Celia", "Elmdore", "Lettie", "Ovelia", "Rapha", "Reis",
+                "Simon", "Valmafra", "Zalmour"
+            };
+            foreach (var name in type2)
+                WalkCycleTypes.For(name).Should().Be(WalkCycleType.Type2, $"{name} is a TYPE2 rig");
+
+            var type1 = new[]
+            {
+                "RamzaChapter1", "RamzaChapter23", "RamzaChapter4",
+                "Squire_Male", "Squire_Female", "Knight_Male", "Knight_Female",
+                "Archer_Male", "Archer_Female", "Monk_Male", "Monk_Female",
+                "Thief_Male", "Thief_Female", "Dragoon_Male", "Dragoon_Female",
+                "Samurai_Male", "Samurai_Female", "Ninja_Male", "Ninja_Female",
+                "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female",
+                "Agrias", "Argath", "Beowulf", "Cloud", "Gaffgarion", "Isilud",
+                "Marach", "Meliadoul", "Mustadio", "Orlandeau", "Orran"
+            };
+            foreach (var name in type1)
+                WalkCycleTypes.For(name).Should().Be(WalkCycleType.Type1, $"{name} is a TYPE1 rig");
+
+            // Unknown characters default to TYPE1 (the majority rig, and the pre-fix behavior).
+            WalkCycleTypes.For("SomeBrandNewCharacter").Should().Be(WalkCycleType.Type1);
         }
 
         /// <summary>
@@ -82,7 +188,6 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         [Fact]
         public void ExtractWalkFrame_CompositesBodyAndBothArms()
         {
-            var extractor = new SpriteSheetExtractor();
             var sheet = new Bitmap(512, 512, PixelFormat.Format32bppArgb);
 
             // Front beat 0: body (0,1) -> sheet (0,80); far arm src (256,160); near arm src (304,160).
@@ -102,7 +207,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             sheet.SetPixel(16, 104, Color.Magenta); // body's local (16,24) pixel
 
             var layout = FrameLayout.Standard;
-            var frame = extractor.ExtractWalkFrame(sheet, Direction.SW, layout, 0);
+            var frame = WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.SW, layout, 0, WalkCycleType.Type1);
 
             AssertPixel(frame, 0, 0, Color.Red);     // body marker at its own origin
             AssertPixel(frame, 6, 16, Color.Lime);   // far arm marker at its offset
@@ -110,6 +215,32 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
             AssertPixel(frame, 8, 18, Color.Yellow); // (a) body wins over far arm
             AssertPixel(frame, 16, 24, Color.Blue);  // (b) near arm wins over body
+        }
+
+        /// <summary>
+        /// The TYPE2 twin of the composite test above, using front beat 0's TYPE2 offsets:
+        /// far arm (-2, 18) (partially clipped off the left edge - the compositor must clip,
+        /// not throw), near arm (22, 24). Markers prove the TYPE2 table is actually applied:
+        /// under TYPE1 offsets the near marker would land at (16, 24), which must stay empty.
+        /// </summary>
+        [Fact]
+        public void ExtractWalkFrame_Type2_PlacesArmsAtType2Offsets()
+        {
+            var sheet = new Bitmap(512, 512, PixelFormat.Format32bppArgb);
+
+            sheet.SetPixel(0, 80, Color.Red);       // body cell (0,1) origin marker
+            sheet.SetPixel(260, 160, Color.Lime);   // far-arm tile-local (4,0): lands at (4 + -2, 0 + 18) = (2, 18)
+            sheet.SetPixel(304, 160, Color.Blue);   // near-arm origin: lands at (22, 24)
+
+            var frame = WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.SW, FrameLayout.Standard, 0, WalkCycleType.Type2);
+
+            AssertPixel(frame, 0, 0, Color.Red);
+            AssertPixel(frame, 2, 18, Color.Lime);
+            AssertPixel(frame, 22, 24, Color.Blue);
+
+            // The TYPE1 landing spot must be empty: this fails if the compositor silently
+            // falls back to the TYPE1 table for a TYPE2 request.
+            frame.GetPixel(16, 24).A.Should().Be(0);
         }
 
         private static void AssertOrigin(Bitmap frame, Color expected)
@@ -128,20 +259,19 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         [Fact]
         public void ExtractWalkFrame_SE_MirrorsSW_NE_MirrorsNW()
         {
-            var extractor = new SpriteSheetExtractor();
             var sheet = new Bitmap(512, 512, PixelFormat.Format32bppArgb);
             sheet.SetPixel(0, 80, Color.Red);      // front beat-0 body cell (0,1) origin
             sheet.SetPixel(320, 80, Color.Yellow);  // back beat-0 body cell (5,1) origin
 
             var layout = FrameLayout.Standard;
 
-            var seFrame = extractor.ExtractWalkFrame(sheet, Direction.SE, layout, 0);
+            var seFrame = WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.SE, layout, 0, WalkCycleType.Type1);
             var sePixel = seFrame.GetPixel(63, 0);
             sePixel.R.Should().Be(255);
             sePixel.G.Should().Be(0);
             sePixel.B.Should().Be(0);
 
-            var neFrame = extractor.ExtractWalkFrame(sheet, Direction.NE, layout, 0);
+            var neFrame = WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.NE, layout, 0, WalkCycleType.Type1);
             var nePixel = neFrame.GetPixel(63, 0);
             nePixel.R.Should().Be(255);
             nePixel.G.Should().Be(255);
@@ -151,14 +281,13 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         [Fact]
         public void ExtractWalkFrame_ReturnsNull_ForNonWalkLayouts()
         {
-            var extractor = new SpriteSheetExtractor();
             var sheet = new Bitmap(512, 512, PixelFormat.Format32bppArgb);
 
             var rectsLayout = FrameLayout.Rects(0, 0, 46, 78, 205, 4, 46, 78);
-            extractor.ExtractWalkFrame(sheet, Direction.SW, rectsLayout, 0).Should().BeNull();
+            WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.SW, rectsLayout, 0, WalkCycleType.Type1).Should().BeNull();
 
             var construct8Layout = FrameLayout.For("Construct8");
-            extractor.ExtractWalkFrame(sheet, Direction.SW, construct8Layout, 0).Should().BeNull();
+            WalkFrameCompositor.ExtractWalkFrame(sheet, Direction.SW, construct8Layout, 0, WalkCycleType.Type2).Should().BeNull();
         }
 
         /// <summary>
@@ -194,16 +323,15 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 return;
             }
 
-            var extractor = new SpriteSheetExtractor();
             var layout = FrameLayout.Standard;
             using var sheet = BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
 
             foreach (var direction in new[] { Direction.SW, Direction.NW })
             {
-                var beats = WalkCycle.For(direction);
+                var beats = WalkCycle.For(direction, WalkCycleType.Type1);
                 for (int beat = 0; beat < WalkCycle.BeatCount; beat++)
                 {
-                    using var frame = extractor.ExtractWalkFrame(sheet, direction, layout, beat);
+                    using var frame = WalkFrameCompositor.ExtractWalkFrame(sheet, direction, layout, beat, WalkCycleType.Type1);
                     frame.Should().NotBeNull();
 
                     var bodyCell = beats[beat].BodyCell;
@@ -215,6 +343,118 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     frameOpaque.Should().BeGreaterThanOrEqualTo(bodyOpaque + MinArmContributionPx,
                         $"{direction} beat {beat} frame ({frameOpaque} opaque px) should carry the arm sub-sprites over the bare body cell ({bodyOpaque} opaque px)");
                 }
+            }
+        }
+
+        /// <summary>
+        /// ARM-SOCKET POSITION test (mutation-proven by its own wrong-type half): loads REAL
+        /// repo sheets and asserts a pixel that is opaque ONLY when the arm sits at the
+        /// sheet's correct rig position. The coordinates are interior pixels of the
+        /// TYPE1-vs-TYPE2 composite difference (computed off the shipped sheets), so a
+        /// presence-only regression - the blind spot that let a dislocated-but-present arm
+        /// pass review - cannot satisfy this: the wrong table leaves the pixel EMPTY.
+        /// Squire_Male is the TYPE1 exemplar; WhiteMage_Male is a confirmed-broken TYPE2 rig.
+        /// </summary>
+        [Theory]
+        [InlineData("Squire_Male", "924_Squire_Male_hd.bmp", WalkCycleType.Type1, WalkCycleType.Type2, Direction.SW, 6, 43, 36)]
+        [InlineData("Squire_Male", "924_Squire_Male_hd.bmp", WalkCycleType.Type1, WalkCycleType.Type2, Direction.NW, 5, 47, 29)]
+        [InlineData("WhiteMage_Male", "1012_Priest_Male_hd.bmp", WalkCycleType.Type2, WalkCycleType.Type1, Direction.SW, 0, 21, 35)]
+        [InlineData("WhiteMage_Male", "1012_Priest_Male_hd.bmp", WalkCycleType.Type2, WalkCycleType.Type1, Direction.NW, 6, 54, 34)]
+        public void RealSheet_ArmSocketPixels_RequireTheSheetsOwnType(
+            string folder, string file, WalkCycleType correctType, WalkCycleType wrongType,
+            Direction direction, int beat, int x, int y)
+        {
+            var repoRoot = FindRepoRoot();
+            var bmpPath = Path.Combine(repoRoot, "ColorMod", "Images", folder, "original", file);
+            File.Exists(bmpPath).Should().BeTrue($"real sheet fixture {bmpPath} must exist");
+
+            // The registry must agree with the sheet's pixel-verified rig.
+            WalkCycleTypes.For(folder).Should().Be(correctType);
+
+            var layout = FrameLayout.Standard;
+            using var sheet = BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
+
+            using var correctFrame = WalkFrameCompositor.ExtractWalkFrame(sheet, direction, layout, beat, correctType);
+            correctFrame.GetPixel(x, y).A.Should().NotBe(0,
+                $"{folder} {direction} beat {beat}: ({x},{y}) is arm content under the sheet's own type");
+
+            using var wrongFrame = WalkFrameCompositor.ExtractWalkFrame(sheet, direction, layout, beat, wrongType);
+            wrongFrame.GetPixel(x, y).A.Should().Be(0,
+                $"{folder} {direction} beat {beat}: ({x},{y}) must be EMPTY under the wrong type (non-vacuity proof)");
+        }
+
+        /// <summary>
+        /// TYPE2 armless catcher. Per-beat thresholds don't work here: on the WhiteMage robe,
+        /// back beat 2's arms sit entirely inside the body silhouette (measured contribution 0),
+        /// so the assertion is on each direction's TOTAL arm contribution across the cycle
+        /// (measured: front 1563 px, back 1362 px on the shipped sheet; a wholesale
+        /// "arms not composited" regression yields exactly 0).
+        /// </summary>
+        [Fact]
+        public void RealSheet_Type2_WalkFramesCarryArms()
+        {
+            const int MinTotalArmContributionPx = 500;
+
+            var repoRoot = FindRepoRoot();
+            var bmpPath = Path.Combine(repoRoot, "ColorMod", "Images", "WhiteMage_Male", "original", "1012_Priest_Male_hd.bmp");
+            File.Exists(bmpPath).Should().BeTrue($"real sheet fixture {bmpPath} must exist");
+
+            var layout = FrameLayout.Standard;
+            using var sheet = BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
+
+            foreach (var direction in new[] { Direction.SW, Direction.NW })
+            {
+                var beats = WalkCycle.For(direction, WalkCycleType.Type2);
+                int total = 0;
+                for (int beat = 0; beat < WalkCycle.BeatCount; beat++)
+                {
+                    using var frame = WalkFrameCompositor.ExtractWalkFrame(sheet, direction, layout, beat, WalkCycleType.Type2);
+                    frame.Should().NotBeNull();
+
+                    var bodyCell = beats[beat].BodyCell;
+                    using var bodyOnly = CropRegion(sheet, bodyCell.X * layout.FrameWidth, bodyCell.Y * layout.FrameHeight, layout.FrameWidth, layout.FrameHeight);
+                    total += CountOpaquePixels(frame) - CountOpaquePixels(bodyOnly);
+                }
+                total.Should().BeGreaterThanOrEqualTo(MinTotalArmContributionPx,
+                    $"{direction} cycle should composite arm sub-sprites over the bare body cells");
+            }
+        }
+
+        /// <summary>
+        /// End-to-end registry wiring: a fixture named "WhiteMage_Male" (a registered TYPE2
+        /// character) must render its walk frames with the TYPE2 table. The marker sits at the
+        /// near-arm source origin; under TYPE2 it lands at frame (22,24), under TYPE1 at
+        /// (16,24) - so this fails if any layer between PaletteModifier and the compositor
+        /// drops the character's type on the floor.
+        /// </summary>
+        [Fact]
+        public void GetWalkPreviewFrames_UsesType2TableForRegisteredType2Character()
+        {
+            var modPath = Path.Combine(Path.GetTempPath(), "WalkAnimType2_" + Guid.NewGuid().ToString("N"));
+            var binPath = Path.Combine(Path.GetTempPath(), "walk_anim_type2_" + Guid.NewGuid().ToString("N") + ".bin");
+            try
+            {
+                // Marker at (304,160): front beat-0 NEAR-ARM source origin, palette index 2 -> red.
+                WriteWalkHdFixture(modPath, "WhiteMage_Male", binPath, markerX: 304, markerY: 160);
+
+                var modifier = new PaletteModifier();
+                modifier.LoadTemplate(binPath, "WhiteMage_Male", modPath);
+                modifier.SupportsWalkAnimation.Should().BeTrue();
+
+                var frames = modifier.GetWalkPreviewFrames(5); // direction 5 = SW
+                frames.Should().NotBeNull();
+
+                var type2Pixel = frames[0].GetPixel(22, 24);
+                type2Pixel.R.Should().Be(255);
+                type2Pixel.G.Should().Be(0);
+                type2Pixel.B.Should().Be(0);
+
+                frames[0].GetPixel(16, 24).A.Should().Be(0, "the TYPE1 landing spot must stay empty for a TYPE2 character");
+            }
+            finally
+            {
+                if (File.Exists(binPath)) File.Delete(binPath);
+                if (Directory.Exists(modPath)) Directory.Delete(modPath, true);
             }
         }
 
