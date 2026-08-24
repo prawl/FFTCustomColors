@@ -60,6 +60,30 @@ per role name; that system is gone. Today:
 | `linkedTo` | One slider drives two sections: the section naming another section via `linkedTo` hides that section's picker and pushes its color there too. |
 | `primaryIndex` | Explicit anchor override when the base-role index is not the right anchor. |
 
+### Known limits (how shading degrades at extremes)
+
+Both modes replay relationships captured from the vanilla sprite, and both have a failure
+mode when the picked base color is extreme. Neither is a bug in the mapping file; they are
+properties of the math, and theme authors should know them before blaming the mapping.
+
+- **Preserve mode collapses at extreme bases.** S/L are re-applied as RATIOS of the anchor.
+  Pick a base with lightness near 0 or 1 and every derived index lands next to it (a ratio
+  of a near-zero number is still near zero), so the section flattens. This is why 4+ index
+  groups use `uniformHue` in the first place.
+- **uniformHue crushes shadows on very dark picks (and highlights on very light ones).**
+  S/L are re-applied as ADDITIVE deltas, then clamped to [0, 1]. A shadow index that sits
+  at base minus 0.15 lightness has nowhere to go once the base itself is below 0.15: the
+  clamp stacks the shades on top of each other. Measured on shipped themes (2026-08-21
+  audit, absolute lightness range per section): Reis `midnight_black` Dress fell from 0.32
+  of vanilla contrast range to 0.05, Meliadoul `plague_knight` SkinColor 0.39 to 0.13,
+  Reis `platinum` Shirt 0.23 to 0.02. Very dark and very light themes therefore trade
+  shading detail away by construction; a mid-tone base keeps the full ramp.
+- **Measure contrast loss absolutely, not as a ratio.** The same audit first divided by the
+  vanilla ramp and ranked Orlandeau `thunder_god` the worst theme in the library while the
+  owner rates it his favourite; a trivial change to a near-flat original ramp reads as a
+  dramatic score. Measured absolutely it ranks 50th of 353 and its Armor section GAINS
+  0.23 contrast. (Ledger: CC-30.)
+
 ## Conventions
 
 - Index 0 is transparency; never include it in a section.

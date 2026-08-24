@@ -4,6 +4,11 @@ How to fix the hair-highlight-follows-skin-color bug on a generic job.
 Squire Male, Squire Female, and White Mage Male are done; this is the
 repeatable process for the rest.
 
+The machinery generalizes past hair: **any index shared between two body
+parts can be split with the same tools** — see **Type C** below for the
+worked Delita Ch1 face/gear split (2026-08-24), which also covers the
+story-sprite differences the generic process glosses over.
+
 The earlier dead-end R&D (pixel classifiers, TEX-vs-SPR theories — all
 superseded) lived in `docs/TODO_HAIR_HIGHLIGHT_FIX.md`, now retired; git
 history still has it if ever needed. **This** file is the current, working
@@ -37,6 +42,9 @@ Separate files, separate formats. Fix one and not the other and the preview
 and the game disagree. (We lost half a session to exactly this.)
 
 ## Two kinds of fix
+
+(Three, since 2026-08-24: **Type C** — the shared-index pixel split — has its
+own section further down. Types A and B below are the hair-specific cases.)
 
 ### Type A — SectionMapping JSON edit (easy)
 
@@ -224,6 +232,56 @@ One commit per job — the TEX pair + the HD BMP. Message: `Hair-highlight fix: 
 
 ---
 
+## Type C — splitting a shared index (worked example: Delita Ch1)
+
+Delita Ch1's index 14 painted both the face's temple/jaw shading AND the
+gold-trim shadow on arms, belt, gloves and boots, so theming Arms & Belt
+tinted his face. Fix: remap the FACE pixels 14 → 15 (skin base) in tex_836,
+tex_837 and the HD BMP — 841 px over three escalating passes — leaving the
+gear pixels on 14. The section mapping then needs no shared-index compromise
+at all. What transfers from Type B, and what this case added:
+
+- **`--src`/`--dst` are parameters**, not the 15→12 of the examples. And the
+  `--hair` flag is really the **border set** — the indices that identify the
+  side you're claiming the pixels FOR. Delita used `--src 14 --dst 15
+  --hair 15,2` (skin + eye whites).
+- **Palette check first (the go/no-go).** A split needs a receiving index in
+  the same hue family or the cure shows worse than the disease. Temple
+  #a07048 → skin 15 #c89068: same family, mild flattening, fine. The reverse
+  direction (arm pixels → gold 6 #d09020) would have dyed tan shadows gold —
+  ruled out before any pixels moved.
+- **The threshold gap can sit LOW instead of high.** Hair highlights score
+  ~0.85 hair-border vs faces ~0.68, so Type B separates high (0.75). Gear
+  trim borders ZERO skin, faces border some, so Delita separated at **0.25**
+  — and 0.15 already over-caught into the hair. Sweep and render; never
+  assume the hair case's numbers.
+- **Escalation ladder** (verify each rung with `changemap.py` before the next):
+  1. `--floodfill --all` at the swept threshold.
+  2. Stragglers with thin border contact: threshold 0.10 gated by an explicit
+     `--cells` whitelist — accept a cell only when the rendered flip sits on
+     a visible face; reject hair-edge flips on back-facing poses.
+  3. Enclosed islands with zero border contact: per-cell blanket
+     `--cells N --maxy V` on the TEX (tune V; hair spikes raise the bbox),
+     byte surgery on the BMP (the `--maxy` mode is TEX-only — see the
+     warning in Tooling).
+- **Exclude the portrait cell.** This mod never recolors portraits. It
+  announces itself by count: one cell held 637 of tex_837's 719 candidate px.
+- **TEX and BMP cell numbers DIVERGE** (different atlas packing): tex_837
+  cells {7,11,56,58} are BMP cells {7,19,55,66}. Never reuse a TEX cell list
+  on a BMP — run the BMP's own `--all` listing and align by the px-count
+  sequence (island/kept counts break ties). Matching totals per pass are the
+  proof the two files got the same fix.
+- **Trust counts, not colors.** The render tools draw through WMM's hardcoded
+  palette; on another character the "red" you see may not be the src index at
+  all (four Delita walk cells looked dirty in cellzoom and were provably
+  clean). The change map plus printed counts are the ground truth.
+- **Story-sheet layout is not the generic 80-row grid** (`framedetect` on
+  dily: bands of 70/70/131/190 rows). Flood-fill and per-cell passes don't
+  care; only slot-relative blanket passes (`hairclassify --blanket`) need the
+  generic layout, so start story characters from the flood-fill end.
+
+---
+
 ## Tooling (`scripts/hair_fix/`)
 
 | Script | Purpose |
@@ -236,9 +294,16 @@ One commit per job — the TEX pair + the HD BMP. Message: `Hair-highlight fix: 
 | `cellzoom.py` | crop & zoom specific cells for close inspection; `--skin` like gridnumber |
 | `tex2png.py` | plain TEX → PNG render |
 | `framedetect.py` | detect the frame-slot layout of a sheet |
+| `changemap.py` | before/after diff render — changed px red, remaining `--src` px cyan, art dimmed; the review artifact for every pass; auto-detects TEX and BMP (with the correct low-nibble BMP decode) |
 
 Notes:
 
+- **`persprite`'s BMP support is flood-fill ONLY.** The `--maxy` (blanket) mode
+  assumes TEX layout and will silently SCRAMBLE a BMP while printing plausible
+  per-cell counts (butchered Delita Ch1's preview, 2026-08-24). For a BMP
+  blanket pass use `bmphair.py --remap`, or patch pixels directly — noting the
+  HD BMPs store pixels **low-nibble-first** (opposite of standard BMP AND of
+  the TEX format), rows bottom-up, content offset +8 rows vs the TEX.
 - The **fix** tools (`hairclassify`, `persprite`) are palette-agnostic — they
   work on any job unchanged.
 - The **render** tools (`gridnumber`, `cellzoom`, `tex2png`) have WMM's palette
