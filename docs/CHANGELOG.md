@@ -8,6 +8,26 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-36] SHIPPED 402a361a 2026-08-24: the theme editor preview can walk. An Animate checkbox
+  beside Compare plays the game's real walk animation for the current facing in the live edited
+  colours: the true eight beat stride with both feet, arms composited onto the sheet's armless
+  walk bodies every beat, and the game's own uneven timing, all read from the game's animation
+  data rather than guessed. Compare animates both panes in step; monsters and Construct 8 grey
+  the checkbox out since their sheets carry no stride frames. Three owner live passes drove it
+  to correct: the first cut walked armless with half a stride, the second socketed arms on only
+  part of the roster because the game rigs its sprites two different ways and the robed and
+  dress bodies use the second rig with different arm offsets. Every one of the 66 characters is
+  now classified to its rig from the game's own sprite table, cross checked by a pixel
+  classifier and the owner's character by character checklist, owner verified on screen.
+  (Tech: TYPE1/TYPE2.SEQ and SHP parsed via a ported Shishi parser; 8 beat palindrome, per
+  beat arm sub sprites, 100/133/167 ms delays; classification from BATTLE.BIN's sprite
+  attributes table at 0x2D748 plus a socket position classifier over all shipped HD sheets;
+  WalkCycle tables per rig, WalkCycleTypes registry with provenance, WalkFrameCompositor split
+  out as a real seam; rig is a required parameter so no call site can silently default;
+  position asserting socket tests close the presence only blind spot that let a wrong rig
+  pass. Built by worktree agents through build lite with adversarial verifies; landed via
+  merges 0d1810cd and 402a361a.)
+
 - [CC-35] SHIPPED aa53bfb5 2026-08-24: Delita can now be recoloured like any other character. He
   appears three times in the NPCs section, one entry per story look (chapter 1, chapters 2 and 3,
   chapter 4), each with owner-calibrated colour sliders, working previews, and themes that the

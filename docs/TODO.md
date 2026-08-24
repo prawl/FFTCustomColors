@@ -80,14 +80,6 @@ that checklist.
 
 ## Backlog
 
-- [CC-36] 2026-08-24: The theme editor preview only shows a frozen pose, so you cannot tell how a
-  theme reads in motion until you launch the game. Add an Animate checkbox beside the existing
-  Compare one that plays the sprite's walk cycle the way the game does. The owner wants this
-  cracked before the next release ships; it is the last story before that release. (Tech: the
-  preview already crops standing frames from the HD BMP sheet; animating means cycling the walk
-  frames for the current facing on a timer, sheet layouts per character come from the same
-  FrameLayout/crop machinery the carousel uses.)
-
 - [CC-41] 2026-08-24: BUG. Gaffgarion's theme is not applying in game, reported by the owner
   while testing the Delita release. Notable because his two built in themes were owner live
   verified on 2026-08-21, so this is either a regression since, a different theme kind (user
