@@ -2,10 +2,13 @@
 
 STATUS: DRAFT (scope not yet locked by the owner)
 
-Current shipped version **3.2.0**, cut 2026-08-13 on the owner's call. It carries the player-facing
-work of the cycle (twelve customizable NPCs, and their themes now visible in the preview pictures)
-and deliberately ships with box 2 below still open: the game-update compatibility investigation
-(CC-10) stays in the ledger's Now and rides the next release. This doc is the
+Current shipped version **3.3.0**, cut 2026-08-24 on the owner's call. It carries the cycle's
+player-facing work since 3.2.0: Delita fully themable across his three story looks, the theme
+editor's Animate walk preview for the whole roster (humans in CC-36, monsters, Chocobo and
+Construct 8 in CC-46), the NPC theme batch, and the CamelCase fix that made saved themes for
+chaptered characters actually reach the game. Like 3.2.0 it deliberately ships with box 2 below
+still open: the game-update compatibility investigation (CC-10) stays in the ledger's Now and
+rides the next release. This doc is the
 ship gate for the release named in docs/TODO.md's Now header; TodoContractTests keeps the two in
 lockstep (the release name must appear here). The heavier per-box enforcement the sibling repo
 runs (ReleaseScopeContractTests) is deliberately not ported yet; it comes in when this doc grows
