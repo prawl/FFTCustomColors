@@ -94,6 +94,11 @@ that checklist.
     skin colour at the pixel level in the battle texture and the preview sheet (910 pixels over
     four passes, portrait untouched, owner verified on screen). Chapters 2 and 3 and 4 still
     expose one slider per index and wait on the owner's calibration.
+  - Chapters 2 and 3 finished 2026-08-24, owner verified on screen: four gear sections (Armor,
+    Under Armor, Hair, Skin Color). One palette colour painted both his hair and a scatter of
+    shadow specks on his red tunic, so the tunic specks were moved onto the under armour's own
+    dark red at the pixel level (284 pixels across the texture pair and the preview sheets,
+    portrait untouched). Only chapter 4 remains.
 
 ## Backlog
 
@@ -260,6 +265,22 @@ that checklist.
   C# and the csproj auto merge clean. So the landing plan is to re apply the worldmap copy and
   verify steps onto the current scripts rather than merge the old ones, and to bisect the four
   suspects with the game closed.)
+
+- [CC-36] 2026-08-24: The theme editor preview only shows a frozen pose, so you cannot tell how a
+  theme reads in motion until you launch the game. Add an Animate checkbox beside the existing
+  Compare one that plays the sprite's walk cycle the way the game does. The owner wants this
+  cracked before the next release ships; it is the last story before that release. (Tech: the
+  preview already crops standing frames from the HD BMP sheet; animating means cycling the walk
+  frames for the current facing on a timer, sheet layouts per character come from the same
+  FrameLayout/crop machinery the carousel uses.)
+
+- [CC-37] 2026-08-24: Pie in the sky. Let a player upload their own sprite sheet for a specific
+  character and have the customizer validate it and cut it properly, so the upload effectively
+  becomes a new selectable theme that swaps in a different sprite, not just different colours.
+  (Tech: needs a validator for sheet size, indexed format and frame layout against that
+  character's expected geometry, a converter from the uploaded sheet into a battle_<sprite>_spr
+  bin (and possibly HD tex), and a user theme registration path alongside the existing palette
+  based user themes.)
 
 ## Walled (blocked by engine / external)
 
