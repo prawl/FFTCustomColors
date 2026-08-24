@@ -80,19 +80,144 @@ that checklist.
 
 ## Backlog
 
-- [CC-28] 2026-08-21: The config window has a thin light colored strip running along the very
-  top edge, above the red title bar, left over from window creation. A first attempt made it
-  worse instead of better: intercepting WM_NCCALCSIZE to claim the whole window as client area
-  removed the strip on first paint, but after the user dragged the title bar to move the window
-  the whole strip turned solid white and never repainted again, a bigger and more visible bug
-  than the original. That change was reverted; ConfigurationForm.cs's WndProc is back to its
-  original state, confirmed byte identical by diff. (Tech: the strip is OS drawn non client
-  area reserved by the WS_THICKFRAME window style even though FormBorderStyle is None, so no
-  client area control such as a docked panel can cover it. Two untested leads for whoever picks
-  this up: proper WM_NCCALCSIZE handling that also repaints correctly across WM_MOVE and
-  WM_NCPAINT, or dropping WS_THICKFRAME entirely and driving resize purely from the existing
-  WM_NCHITTEST logic. Neither has been tried; the WM_NCCALCSIZE only attempt above is what
-  broke on drag.)
+- [CC-36] 2026-08-24: The theme editor preview only shows a frozen pose, so you cannot tell how a
+  theme reads in motion until you launch the game. Add an Animate checkbox beside the existing
+  Compare one that plays the sprite's walk cycle the way the game does. The owner wants this
+  cracked before the next release ships; it is the last story before that release. (Tech: the
+  preview already crops standing frames from the HD BMP sheet; animating means cycling the walk
+  frames for the current facing on a timer, sheet layouts per character come from the same
+  FrameLayout/crop machinery the carousel uses.)
+
+- [CC-41] 2026-08-24: BUG. Gaffgarion's theme is not applying in game, reported by the owner
+  while testing the Delita release. Notable because his two built in themes were owner live
+  verified on 2026-08-21, so this is either a regression since, a different theme kind (user
+  theme rather than built in), or a surface his earlier check did not cover. (Tech: first
+  suspects are his TWO sprite bins, baruna and h61, where a path that only handles a character's
+  first sprite would leave his second appearance vanilla, and the user theme apply path fixed
+  for CamelCase names in aa53bfb5, which Gaffgarion's single word name should not hit but the
+  live log at logs/live_log.txt will settle; reproduce, read the log, then bisect.)
+
+- [CC-44] 2026-08-24: Redo Gaffgarion's colour groups from scratch. The owner judges his own
+  first calibration a bad job, so give him the per-index sliders back (the standard hybrid
+  scaffold: current groups plus Index 1 to 15) and regroup from his new readings. Do this before
+  CC-43, since the regrouping decides where the mustache and eye pixels should land.
+
+- [CC-45] 2026-08-24: Audit every character's slider names. The owner named many section
+  sliders arbitrarily during calibration ("ArmorAccent2", parts misnamed outright) and wants a
+  consistency and accuracy pass over the whole roster before those labels ship to players.
+  (Tech: displayName changes are safe any time; section NAME keys are referenced by built-in
+  theme recipes, so renaming a key means updating the recipe and re-baking; the per-character
+  preview in the theme editor is the fastest way to check a label against what actually
+  recolours.)
+
+- [CC-39] 2026-08-24: NPCs should come before Monsters wherever the two groups are listed, and
+  today Monsters sit first. Swap the two groups and their items in the theme editor template
+  dropdown and any other surface that orders them, such as the config window sections. (Tech:
+  reorder the group blocks in ThemeEditorPanel's dropdown construction and check
+  ConfigurationForm's section loading order.)
+
+- [CC-38] 2026-08-24: In the theme editor you can only start from a character's built in template;
+  your own saved themes are not offered as a starting point, so editing an existing theme means
+  rebuilding it from scratch. List the user's custom themes at the bottom of the Templates dropdown
+  so picking one loads it for editing. (Tech: user themes live per character via UserThemeService
+  and are browsable in MyThemesPanel; the ask is a group at the bottom of ThemeEditorPanel's
+  template dropdown that resolves to the saved palette instead of the vanilla template.)
+
+- [CC-43] 2026-08-24: Gaffgarion's Mustache slider also recolours his eyes, because both are
+  painted by the same palette colour. Separate them so the mustache can be themed without giving
+  him tinted eyeballs. (Tech: his Mustache group is index 2 alone, and index 2 is also his eye
+  whites. This is a Type C shared index split per the hair fix process doc: find which side has a
+  tone compatible receiving index (eyes want to stay near white and untinted, so likely the eye
+  pixels move to a neutral index or the mustache pixels move to a freed one), run the palette
+  check first as the go or no go, then the flood fill or byte surgery on his tex pair and HD BMPs
+  with the portrait excluded. Pixel counts are tiny on both sides, so this is a small surgery.)
+
+- [CC-40] 2026-08-24: The near black outline around each sprite was deliberately left out of every
+  character's colour groups, but a Delita experiment showed the outline is not pure black: it
+  carries a faint tint of the armour colour, and letting it follow the armour slider looks better.
+  Go back over every character (generic jobs, story characters, NPCs) and add each sprite's
+  outline index to its main colour group. (Tech: the outline is index 1 on most sprites; the
+  Delita Ch23 try-out was Armor 6,5,4,1 with role outline and uniformHue, reverted pending this
+  sweep. Watch the uniformHue clamp crush on very dark bases documented in SECTION_MAPPINGS.md,
+  and sprites where index 1 doubles as another dark detail tone; the theme editor preview makes
+  each character a quick visual check.)
+
+- [CC-7] 2026-07-21: Knight Male hair-highlight fix, Type B surgical pixel remap. The process
+  doc (docs/HAIR_HIGHLIGHT_FIX_PROCESS.md) says it is built and awaiting visual review at
+  working/kn_changemap.png, but that artifact no longer exists anywhere on disk (the uncommitted
+  Type B output in working/ was cleaned out; verified 2026-07-21), so the remap must be
+  regenerated per the doc's process before the owner review can happen.
+
+- [CC-5] 2026-07-21: Chin-strap pixels follow the Hair color slider on most generic sprites (the
+  mirror of the hair-highlight bug). Real and confirmed in-game; deliberately deferred until the
+  hair-highlight project completes.
+
+- [CC-30] 2026-08-21: Rework the older built in themes, which the owner rates as sloppy beside the
+  ones authored on 2026-08-21. Measurement says the cause is mostly colour choice rather than a
+  bug in the mod: across 353 recoloured sections only 24 lose real shading, and the median shading
+  lost is the same for old and new themes. (Tech: the audit measures ABSOLUTE lightness range lost
+  per section. An earlier ratio based version of the same metric was wrong and ranked Orlandeau
+  thunder_god the worst theme in the library when the owner rates it his favourite, because
+  dividing by a near zero original ramp turns a trivial change into a dramatic score; that theme
+  ranks 50th of 353 once measured absolutely, and its Armor section GAINS 0.23 contrast. Real
+  offenders worth fixing: Reis midnight_black Dress 0.32 to 0.05, Meliadoul plague_knight
+  SkinColor 0.39 to 0.13, Reis platinum Shirt 0.23 to 0.02. Decide separately whether to import
+  the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
+  grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
+
+- [CC-8] 2026-07-21: Remove or fix the suite's silently-skipped tests. The runner reports 0
+  skipped because the skips are silent early returns: environment-gated guards (mappings dir
+  missing, base SQLite missing, nxd files missing, dropdown entry absent) return from the test
+  body and count as PASSED while asserting nothing (ThemeEditorRamzaTests, RamzaThemeSaverTests,
+  NxdPatcherTests, CharacterDefinitionServiceTests). Convert them to reported skips or hermetic
+  tests, or delete them.
+
+- [CC-17] 2026-07-21: A ledger row accidentally pasted after the Format section escapes every
+  grammar and id-uniqueness scan, because the contract tests only read entries out of the Now,
+  Backlog, and changelog sections (found by a sabotage that landed after Format and stayed
+  green); decide whether entry-shaped lines in Walled or Format should fail the contract. The
+  sibling repos share the same blind spot.
+  Fixed in the TreasureMaster sibling 2026-07-21 (its TM-6, commit 5569e8e) and the decision
+  there was yes, they fail the contract: an entry-shape regex swept over the non-entry
+  sections, proven by a planted stray going red and the revert going green. The port is that
+  one test with the id prefix swapped to CC.
+
+- [CC-29] 2026-08-21: When a player recolours a unit, the face shown in menus and dialogue keeps
+  the original colours, so a themed unit reads as two different people. Recolour the portrait to
+  match the body. (Tech: the portrait lives in the SAME sprite bin the mod already ships, at
+  palette slots 8 to 15, with slots 0 to 7 holding the unit; documented at scripts/README.md:954
+  and consistent with a census of 38 generic job bins where slots 8 to 12 carry data whose
+  trailing skin colours are identical across slots. So no new file channel is needed. The catch
+  is that the index to body part mapping differs between the unit half and the portrait half, so
+  the existing Data/SectionMappings entries cannot be reused as is and a portrait side mapping is
+  needed per character. Measured 2026-08-21, the game derives that mapping for us: its own faction
+  portrait palettes sit in slots 8 to 12, and comparing them shows indices 1 to 4 vary on 36 to 38
+  of 38 generic job bins while index 15 never varies. So 1 to 4 are the team colour clothing block,
+  15 is skin, and 5 to 6 are secondary clothing varying on about 25 of 38. The indices the artists
+  recoloured per faction are exactly the ones a player theme should recolour.)
+  - Verify: the owner opens the formation and a dialogue scene on a themed unit and the face
+    matches the body.
+
+- [CC-32] 2026-08-21: Ramza's little figure that walks around the world map keeps his original
+  colours when a theme is applied, so a themed Ramza looks right in battle and wrong on the map.
+  This was built once and never landed, and the half that works is further along than "we tried
+  and failed" suggests. (Tech: the overworld sprite is a UI texture, not the battle sprite:
+  ui/ffto/worldmap/texture/ramza_{a,b,c}_uitx.tex plus matching textureparts .utexpt, in extracted
+  pac 0008, a separate channel from the battle g2d tex_830 to 835. Letter is by chapter, a is ch1
+  blue, b is ch2 and ch3 purple, c is ch4 teal. The work sits on branch worldmap-custom-theme-wip
+  at commit c17bd924, 1335 lines over 37 files: WorldMapTexSwapper, WorldMapTexCodec,
+  WorldMapCustomThemeApplier, 223 lines of tests, pre baked assets for all three built in themes,
+  and a post mortem at docs/WORLDMAP_CUSTOM_THEME_WIP.md. BUILT IN PRESETS WERE CONFIRMED WORKING
+  IN GAME by the owner; only CUSTOM user themes fail, because their texture must be generated at
+  runtime and that path was never bisected. Four suspects are recorded and none were isolated: the
+  game may reject the uncompressed R8G8B8A8 tex we write where vanilla ships BC7; the hue gate may
+  miss the armour pixels; the custom theme branch may not fire or may write the wrong override
+  path; a relaunch may be needed since UI textures map at launch. Merge cost measured 2026-08-21:
+  the branch is one commit off a base that main has since passed by 40, and a read only merge probe
+  conflicts ONLY in BuildLinked.ps1 and Publish.ps1, both rewritten wholesale by CC-10, while the
+  C# and the csproj auto merge clean. So the landing plan is to re apply the worldmap copy and
+  verify steps onto the current scripts rather than merge the old ones, and to bisect the four
+  suspects with the game closed.)
 
 - [CC-25] 2026-08-17: Give the Nexus banner a fresh face the way Living Weapons got one: fewer,
   bigger themed sprites arranged as a left-to-right rainbow, so a visitor instantly reads "this
@@ -104,34 +229,7 @@ that checklist.
   Nexus's scrim plus title to check legibility before upload. Tile source: standing frames
   decoded from the sprites_* BINs via the renderer logic in scripts/render_sprite_preview.py,
   integer NEAREST upscale to keep pixels crisp.)
-- [CC-3] 2026-07-21: Add a flight recorder if it makes sense. The FFTLivingWeapons core (bounded
-  ring, jsonl flush files, first-error FlushOnce trigger, retention prune) is domain-neutral and
-  portable; the battle-edge flush triggers are not, so the port would flush on theme-apply edges
-  and first error instead, making "my theme did not apply" reports diagnosable after the fact.
-  Decide alongside CC-2 since the error trigger hooks the logger's Error path.
-- [CC-4] 2026-07-21: Evaluate the fingerprint guard (the FFTLivingWeapons LaunchGuard pattern).
-  Early lean is WONTFIX: that guard protects pinned memory offsets against game patches, and this
-  mod is a pure file-override mod with no memory reads or writes, so there may be nothing for it
-  to guard. Cheap evaluation, then a deliberate keep-or-kill decision on the record.
-- [CC-5] 2026-07-21: Chin-strap pixels follow the Hair color slider on most generic sprites (the
-  mirror of the hair-highlight bug). Real and confirmed in-game; deliberately deferred until the
-  hair-highlight project completes.
-- [CC-6] 2026-07-21: Finish WotL Dark Knight and Onion Knight support. Registry, config, and
-  sprite-manager phases are complete; still open per docs/TODO_WOTL_JOBS.md: original sprite
-  extraction from unit_psp, at least one alternate theme, UI previews, section mappings, the
-  GenericJobs-detection niceties, and the whole integration-testing and edge-case phases (all
-  in-game verification with the GenericJobs mod installed).
-- [CC-7] 2026-07-21: Knight Male hair-highlight fix, Type B surgical pixel remap. The process
-  doc (docs/HAIR_HIGHLIGHT_FIX_PROCESS.md) says it is built and awaiting visual review at
-  working/kn_changemap.png, but that artifact no longer exists anywhere on disk (the uncommitted
-  Type B output in working/ was cleaned out; verified 2026-07-21), so the remap must be
-  regenerated per the doc's process before the owner review can happen.
-- [CC-8] 2026-07-21: Remove or fix the suite's silently-skipped tests. The runner reports 0
-  skipped because the skips are silent early returns: environment-gated guards (mappings dir
-  missing, base SQLite missing, nxd files missing, dropdown entry absent) return from the test
-  body and count as PASSED while asserting nothing (ThemeEditorRamzaTests, RamzaThemeSaverTests,
-  NxdPatcherTests, CharacterDefinitionServiceTests). Convert them to reported skips or hermetic
-  tests, or delete them.
+
 - [CC-19] 2026-08-12: Convert the config window layout to measure its own text so any display
   scale or font size lays out correctly by construction (AutoSize labels and buttons, table and
   flow layout rows, theme editor first) behind a new FontScaleInvariantTests sweep, then retire
@@ -141,27 +239,46 @@ that checklist.
   PerformLayout so ComboBox and TrackBar realize sizes in tests; pin the inner panel width
   against the AutoScroll feedback loop; retiring the scope makes saved window sizes jump once
   (WindowStateService stores raw pixels with no scale stamp, worth stamping while in there).
-- [CC-17] 2026-07-21: A ledger row accidentally pasted after the Format section escapes every
-  grammar and id-uniqueness scan, because the contract tests only read entries out of the Now,
-  Backlog, and changelog sections (found by a sabotage that landed after Format and stayed
-  green); decide whether entry-shaped lines in Walled or Format should fail the contract. The
-  sibling repos share the same blind spot.
-  Fixed in the TreasureMaster sibling 2026-07-21 (its TM-6, commit 5569e8e) and the decision
-  there was yes, they fail the contract: an entry-shape regex swept over the non-entry
-  sections, proven by a planted stray going red and the revert going green. The port is that
-  one test with the id prefix swapped to CC.
+
 - [CC-18] 2026-08-12: Resizing the config window by its edges misbehaves for anyone whose
   monitor sits left of or above their main monitor, because the window decodes the mouse
   position without sign extension and negative screen coordinates read as huge positive
   numbers. (Tech: WM_NCHITTEST lParam unpacked with unsigned 16-bit masks,
   ConfigurationForm.cs:411; surfaced by the CC-9 audit; fold into whichever CC-9 stage
   touches that handler.)
+
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
   owner's live log (three "missing theme files" warnings for RamzaChapter dirs that never
   exist under unit/, and an empty-name "Original sprite not found for reis:" warning). Both
   fold naturally into the CC-2 logging rework if that lands first.
+
+- [CC-6] 2026-07-21: Finish WotL Dark Knight and Onion Knight support. Registry, config, and
+  sprite-manager phases are complete; still open per docs/TODO_WOTL_JOBS.md: original sprite
+  extraction from unit_psp, at least one alternate theme, UI previews, section mappings, the
+  GenericJobs-detection niceties, and the whole integration-testing and edge-case phases (all
+  in-game verification with the GenericJobs mod installed).
+
+- [CC-42] 2026-08-24: Add Balthier and Luso to the roster. They are the WotL guest characters that
+  the Nexus mod at nexusmods.com/finalfantasytacticstheivalicechronicles/mods/33 restores to the
+  game, so like Dark Knight and Onion Knight they only make sense for players running that mod and
+  the rows should detect or note the dependency. (Tech: real head start exists: the old branch
+  claude/balthier-luso-colors-8WTwb carries commits adding both characters' section mappings,
+  original sprites, theme editor entries and built-in themes; it is far behind current main, so
+  treat it as a parts shop to re-apply through today's registry pipeline, not something to merge.
+  Check which sprite bins and unit folder that mod actually ships before promising anything.)
+
+- [CC-3] 2026-07-21: Add a flight recorder if it makes sense. The FFTLivingWeapons core (bounded
+  ring, jsonl flush files, first-error FlushOnce trigger, retention prune) is domain-neutral and
+  portable; the battle-edge flush triggers are not, so the port would flush on theme-apply edges
+  and first error instead, making "my theme did not apply" reports diagnosable after the fact.
+  Decide alongside CC-2 since the error trigger hooks the logger's Error path.
+
+- [CC-4] 2026-07-21: Evaluate the fingerprint guard (the FFTLivingWeapons LaunchGuard pattern).
+  Early lean is WONTFIX: that guard protects pinned memory offsets against game patches, and this
+  mod is a pure file-override mod with no memory reads or writes, so there may be nothing for it
+  to guard. Cheap evaluation, then a deliberate keep-or-kill decision on the record.
 
 - [CC-23] 2026-08-19: Let players recolour the weapons their units swing in battle, with the same
   kind of sliders the jobs and monsters already have. The colour of a swung weapon lives in a small
@@ -186,6 +303,7 @@ that checklist.
   NEXT BATTLE and not immediately, because it does not change the battle already on screen. This
   covers file 71 only; menu icon art comes from the g2d container which is read once per launch,
   so if the slider ever touches menu art that half is untested and may still need a relaunch.)
+
 - [CC-24] 2026-08-19: Make the weapon recolour behave when Living Weapons is installed too. Both
   mods write the same sprite sheet and there is no way to merge one, so whichever loads last
   silently erases the other and the player gets no warning. Instead of competing, read whichever
@@ -194,63 +312,19 @@ that checklist.
   their baked battle_wep_spr.bin as the rebuild base in place of sprites_original when they own it,
   else vanilla. Depends on CC-23. Prior art for the detect half is GenericJobsDetector.)
 
-- [CC-29] 2026-08-21: When a player recolours a unit, the face shown in menus and dialogue keeps
-  the original colours, so a themed unit reads as two different people. Recolour the portrait to
-  match the body. (Tech: the portrait lives in the SAME sprite bin the mod already ships, at
-  palette slots 8 to 15, with slots 0 to 7 holding the unit; documented at scripts/README.md:954
-  and consistent with a census of 38 generic job bins where slots 8 to 12 carry data whose
-  trailing skin colours are identical across slots. So no new file channel is needed. The catch
-  is that the index to body part mapping differs between the unit half and the portrait half, so
-  the existing Data/SectionMappings entries cannot be reused as is and a portrait side mapping is
-  needed per character. Measured 2026-08-21, the game derives that mapping for us: its own faction
-  portrait palettes sit in slots 8 to 12, and comparing them shows indices 1 to 4 vary on 36 to 38
-  of 38 generic job bins while index 15 never varies. So 1 to 4 are the team colour clothing block,
-  15 is skin, and 5 to 6 are secondary clothing varying on about 25 of 38. The indices the artists
-  recoloured per faction are exactly the ones a player theme should recolour.)
-  - Verify: the owner opens the formation and a dialogue scene on a themed unit and the face
-    matches the body.
-
-- [CC-30] 2026-08-21: Rework the older built in themes, which the owner rates as sloppy beside the
-  ones authored on 2026-08-21. Measurement says the cause is mostly colour choice rather than a
-  bug in the mod: across 353 recoloured sections only 24 lose real shading, and the median shading
-  lost is the same for old and new themes. (Tech: the audit measures ABSOLUTE lightness range lost
-  per section. An earlier ratio based version of the same metric was wrong and ranked Orlandeau
-  thunder_god the worst theme in the library when the owner rates it his favourite, because
-  dividing by a near zero original ramp turns a trivial change into a dramatic score; that theme
-  ranks 50th of 353 once measured absolutely, and its Armor section GAINS 0.23 contrast. Real
-  offenders worth fixing: Reis midnight_black Dress 0.32 to 0.05, Meliadoul plague_knight
-  SkinColor 0.39 to 0.13, Reis platinum Shirt 0.23 to 0.02. Decide separately whether to import
-  the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
-  grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
-
-- [CC-32] 2026-08-21: Ramza's little figure that walks around the world map keeps his original
-  colours when a theme is applied, so a themed Ramza looks right in battle and wrong on the map.
-  This was built once and never landed, and the half that works is further along than "we tried
-  and failed" suggests. (Tech: the overworld sprite is a UI texture, not the battle sprite:
-  ui/ffto/worldmap/texture/ramza_{a,b,c}_uitx.tex plus matching textureparts .utexpt, in extracted
-  pac 0008, a separate channel from the battle g2d tex_830 to 835. Letter is by chapter, a is ch1
-  blue, b is ch2 and ch3 purple, c is ch4 teal. The work sits on branch worldmap-custom-theme-wip
-  at commit c17bd924, 1335 lines over 37 files: WorldMapTexSwapper, WorldMapTexCodec,
-  WorldMapCustomThemeApplier, 223 lines of tests, pre baked assets for all three built in themes,
-  and a post mortem at docs/WORLDMAP_CUSTOM_THEME_WIP.md. BUILT IN PRESETS WERE CONFIRMED WORKING
-  IN GAME by the owner; only CUSTOM user themes fail, because their texture must be generated at
-  runtime and that path was never bisected. Four suspects are recorded and none were isolated: the
-  game may reject the uncompressed R8G8B8A8 tex we write where vanilla ships BC7; the hue gate may
-  miss the armour pixels; the custom theme branch may not fire or may write the wrong override
-  path; a relaunch may be needed since UI textures map at launch. Merge cost measured 2026-08-21:
-  the branch is one commit off a base that main has since passed by 40, and a read only merge probe
-  conflicts ONLY in BuildLinked.ps1 and Publish.ps1, both rewritten wholesale by CC-10, while the
-  C# and the csproj auto merge clean. So the landing plan is to re apply the worldmap copy and
-  verify steps onto the current scripts rather than merge the old ones, and to bisect the four
-  suspects with the game closed.)
-
-- [CC-36] 2026-08-24: The theme editor preview only shows a frozen pose, so you cannot tell how a
-  theme reads in motion until you launch the game. Add an Animate checkbox beside the existing
-  Compare one that plays the sprite's walk cycle the way the game does. The owner wants this
-  cracked before the next release ships; it is the last story before that release. (Tech: the
-  preview already crops standing frames from the HD BMP sheet; animating means cycling the walk
-  frames for the current facing on a timer, sheet layouts per character come from the same
-  FrameLayout/crop machinery the carousel uses.)
+- [CC-28] 2026-08-21: The config window has a thin light colored strip running along the very
+  top edge, above the red title bar, left over from window creation. A first attempt made it
+  worse instead of better: intercepting WM_NCCALCSIZE to claim the whole window as client area
+  removed the strip on first paint, but after the user dragged the title bar to move the window
+  the whole strip turned solid white and never repainted again, a bigger and more visible bug
+  than the original. That change was reverted; ConfigurationForm.cs's WndProc is back to its
+  original state, confirmed byte identical by diff. (Tech: the strip is OS drawn non client
+  area reserved by the WS_THICKFRAME window style even though FormBorderStyle is None, so no
+  client area control such as a docked panel can cover it. Two untested leads for whoever picks
+  this up: proper WM_NCCALCSIZE handling that also repaints correctly across WM_MOVE and
+  WM_NCPAINT, or dropping WS_THICKFRAME entirely and driving resize purely from the existing
+  WM_NCHITTEST logic. Neither has been tried; the WM_NCCALCSIZE only attempt above is what
+  broke on drag.)
 
 - [CC-37] 2026-08-24: Pie in the sky. Let a player upload their own sprite sheet for a specific
   character and have the customizer validate it and cut it properly, so the upload effectively
@@ -259,56 +333,6 @@ that checklist.
   character's expected geometry, a converter from the uploaded sheet into a battle_<sprite>_spr
   bin (and possibly HD tex), and a user theme registration path alongside the existing palette
   based user themes.)
-
-- [CC-38] 2026-08-24: In the theme editor you can only start from a character's built in template;
-  your own saved themes are not offered as a starting point, so editing an existing theme means
-  rebuilding it from scratch. List the user's custom themes at the bottom of the Templates dropdown
-  so picking one loads it for editing. (Tech: user themes live per character via UserThemeService
-  and are browsable in MyThemesPanel; the ask is a group at the bottom of ThemeEditorPanel's
-  template dropdown that resolves to the saved palette instead of the vanilla template.)
-
-- [CC-39] 2026-08-24: NPCs should come before Monsters wherever the two groups are listed, and
-  today Monsters sit first. Swap the two groups and their items in the theme editor template
-  dropdown and any other surface that orders them, such as the config window sections. (Tech:
-  reorder the group blocks in ThemeEditorPanel's dropdown construction and check
-  ConfigurationForm's section loading order.)
-
-- [CC-40] 2026-08-24: The near black outline around each sprite was deliberately left out of every
-  character's colour groups, but a Delita experiment showed the outline is not pure black: it
-  carries a faint tint of the armour colour, and letting it follow the armour slider looks better.
-  Go back over every character (generic jobs, story characters, NPCs) and add each sprite's
-  outline index to its main colour group. (Tech: the outline is index 1 on most sprites; the
-  Delita Ch23 try-out was Armor 6,5,4,1 with role outline and uniformHue, reverted pending this
-  sweep. Watch the uniformHue clamp crush on very dark bases documented in SECTION_MAPPINGS.md,
-  and sprites where index 1 doubles as another dark detail tone; the theme editor preview makes
-  each character a quick visual check.)
-
-- [CC-41] 2026-08-24: BUG. Gaffgarion's theme is not applying in game, reported by the owner
-  while testing the Delita release. Notable because his two built in themes were owner live
-  verified on 2026-08-21, so this is either a regression since, a different theme kind (user
-  theme rather than built in), or a surface his earlier check did not cover. (Tech: first
-  suspects are his TWO sprite bins, baruna and h61, where a path that only handles a character's
-  first sprite would leave his second appearance vanilla, and the user theme apply path fixed
-  for CamelCase names in aa53bfb5, which Gaffgarion's single word name should not hit but the
-  live log at logs/live_log.txt will settle; reproduce, read the log, then bisect.)
-
-- [CC-42] 2026-08-24: Add Balthier and Luso to the roster. They are the WotL guest characters that
-  the Nexus mod at nexusmods.com/finalfantasytacticstheivalicechronicles/mods/33 restores to the
-  game, so like Dark Knight and Onion Knight they only make sense for players running that mod and
-  the rows should detect or note the dependency. (Tech: real head start exists: the old branch
-  claude/balthier-luso-colors-8WTwb carries commits adding both characters' section mappings,
-  original sprites, theme editor entries and built-in themes; it is far behind current main, so
-  treat it as a parts shop to re-apply through today's registry pipeline, not something to merge.
-  Check which sprite bins and unit folder that mod actually ships before promising anything.)
-
-- [CC-43] 2026-08-24: Gaffgarion's Mustache slider also recolours his eyes, because both are
-  painted by the same palette colour. Separate them so the mustache can be themed without giving
-  him tinted eyeballs. (Tech: his Mustache group is index 2 alone, and index 2 is also his eye
-  whites. This is a Type C shared index split per the hair fix process doc: find which side has a
-  tone compatible receiving index (eyes want to stay near white and untinted, so likely the eye
-  pixels move to a neutral index or the mustache pixels move to a freed one), run the palette
-  check first as the go or no go, then the flood fill or byte surgery on his tex pair and HD BMPs
-  with the portrait excluded. Pixel counts are tiny on both sides, so this is a small surgery.)
 
 ## Walled (blocked by engine / external)
 
