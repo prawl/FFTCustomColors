@@ -292,6 +292,15 @@ that checklist.
   for CamelCase names in aa53bfb5, which Gaffgarion's single word name should not hit but the
   live log at logs/live_log.txt will settle; reproduce, read the log, then bisect.)
 
+- [CC-42] 2026-08-24: Add Balthier and Luso to the roster. They are the WotL guest characters that
+  the Nexus mod at nexusmods.com/finalfantasytacticstheivalicechronicles/mods/33 restores to the
+  game, so like Dark Knight and Onion Knight they only make sense for players running that mod and
+  the rows should detect or note the dependency. (Tech: real head start exists: the old branch
+  claude/balthier-luso-colors-8WTwb carries commits adding both characters' section mappings,
+  original sprites, theme editor entries and built-in themes; it is far behind current main, so
+  treat it as a parts shop to re-apply through today's registry pipeline, not something to merge.
+  Check which sprite bins and unit folder that mod actually ships before promising anything.)
+
 ## Walled (blocked by engine / external)
 
 - Some story characters (Mustadio, Rapha, Meliadoul, Construct 8 observed) need a game restart
