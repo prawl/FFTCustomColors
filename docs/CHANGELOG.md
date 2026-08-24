@@ -8,6 +8,13 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-31] WONTFIX 2026-08-24: the plan to give story NPCs the game's own faction outfits is
+  dropped by owner decision. Four such themes were built and briefly shipped, and a prototype put
+  all four faction colours on Ovelia, but on seeing them the owner ruled that NPCs should only
+  ever offer the themes designed for them, so the shipped four were reverted in the same commit
+  as this row. (Tech: the CC-31 harvest machinery itself was sound; the verdict is about taste,
+  not mechanism. The generic job faction themes are untouched by this ruling.)
+
 - [CC-26] SHIPPED 94026741 2026-08-21: two tests no longer fail at random, so a red suite can be
   trusted again. They failed roughly one run in twenty and passed alone, which is worse than a test
   that always fails because it teaches everyone to shrug and re run; that habit had already caused

@@ -28,16 +28,24 @@ internal static class Program
             var repoRoot = FindRepoRoot();
             var recipeDir = Path.Combine(repoRoot, "ColorMod", "Data", "BuiltInThemes", "NPC");
 
-            var files = Directory.Exists(recipeDir)
-                ? Directory.GetFiles(recipeDir, "*.json").OrderBy(f => f).ToList()
-                : new List<string>();
+            if (!Directory.Exists(recipeDir))
+            {
+                Console.Error.WriteLine($"No recipe directory at {recipeDir}");
+                return 1;
+            }
+
+            var files = Directory.GetFiles(recipeDir, "*.json").OrderBy(f => f).ToList();
             if (args.Length > 0)
             {
                 var wanted = args.Select(a => a.ToLowerInvariant()).ToHashSet();
                 files = files
                     .Where(f => wanted.Contains(Path.GetFileNameWithoutExtension(f).ToLowerInvariant()))
                     .ToList();
-
+                if (files.Count == 0)
+                {
+                    Console.Error.WriteLine($"No recipe matched: {string.Join(", ", args)}");
+                    return 1;
+                }
             }
 
             var registry = LoadRegistry(repoRoot, out var registryPath);
@@ -45,10 +53,6 @@ internal static class Program
 
             foreach (var file in files)
                 baked += BakeRecipeFile(repoRoot, file, registry);
-
-            // CC-31 harvested themes: the game's own unused palette slots, promoted verbatim.
-            // A different job from the designed recipes above, so it lives in its own file.
-            baked += HarvestBaker.BakeAll(repoRoot, registry, args);
 
             SaveRegistry(registryPath, registry);
 
@@ -147,7 +151,7 @@ internal static class Program
     /// Appends the theme to the character's availableThemes if it is not already listed.
     /// "original" always stays first; new themes append in bake order.
     /// </summary>
-    internal static void RegisterTheme(JObject registry, string character, string themeName)
+    private static void RegisterTheme(JObject registry, string character, string themeName)
     {
         var characters = (JArray?)registry["characters"]
             ?? throw new InvalidOperationException("StoryCharacters.json has no \"characters\" array");

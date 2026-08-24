@@ -44,12 +44,12 @@ namespace Tests.Registry
             { "Ovelia", new[] { "original", "fantasia", "scorned_princess" } },
             { "Isilud", new[] { "original", "dusk_dragoon", "night_blade", "gladiator" } },
             { "Alma", new[] { "original", "ballet", "nocturnal_rose", "flower_maid", "wedding", "rain_dancer" } },
-            { "Argath", new[] { "original", "red_snake", "water_rat", "corpse_brigade" } },
-            { "Elmdore", new[] { "original", "silver_noble", "southern_sky" } },
+            { "Argath", new[] { "original", "red_snake", "water_rat" } },
+            { "Elmdore", new[] { "original", "silver_noble" } },
             { "Zalmour", new[] { "original", "pure_saint", "druid" } },
             { "Gaffgarion", new[] { "original", "dark_knight", "white_knight" } },
             { "Orran", new[] { "original", "scholar", "sea_scientist" } },
-            { "Simon", new[] { "original", "blood_priest", "bishop", "southern_sky" } },
+            { "Simon", new[] { "original", "blood_priest", "bishop" } },
         };
 
         private static string[] ThemesFor(string name) =>

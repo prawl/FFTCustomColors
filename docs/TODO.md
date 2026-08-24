@@ -73,31 +73,6 @@ that checklist.
     StoryCharacters.json. Separately the baker and the contract test only handled a character's
     FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
     her three appearances.
-- **[CC-31] Ship the game's own unused colour schemes as themes** (opened 2026-08-21) [AWAITING-LIVE]
-  - Done means: characters who have a finished alternate outfit sitting unused inside the game's
-    own files offer it in their theme dropdown, coloured exactly as the original artists made it
-    rather than as something we invented. (Tech: promote palette slot N over slot 0 verbatim, no
-    quantisation and no shade generation, so the shipped bytes are the artists' own.)
-  - Verify: the owner picks each new theme in game and sees the character recoloured, and
-    HarvestedThemeContractTests re-derives every shipped bin from the vanilla original and
-    byte-compares.
-  - Built 2026-08-21, suite 1505 of 1505 green. FOUR themes shipped, not the eight this row
-    originally claimed: Agrias southern_sky (slot 2, on both aguri and kanba), Argath
-    corpse_brigade (slot 3), Elmdore southern_sky (slot 2), Simon southern_sky (slot 2).
-  - A census of every slot 1 to 7 on every registry bin, rather than a spot check of the listed
-    eight, killed three of the original candidates and could not test a fourth. Simon slot 1 is
-    byte identical to slot 0, so it would have shipped a dropdown entry that changes nothing a
-    player can see. Argath slot 1 differs in only 2 of 16 entries, near invisible. Meliadoul's
-    battle_h80_spr.bin is not in sprites_original at all, along with four other registry bins
-    (Mustadio garu, Reis reze_d, Rapha h79, Construct8 tetsu), so those five cannot be censused
-    or theme edited; that gap is worth its own row.
-  - Theme names follow the slot convention already shipped on the generic jobs (1 northern_sky,
-    2 southern_sky, 3 corpse_brigade, 4 lucavi), on the reasoning that the slot index is the
-    engine's faction selector, so slot 2 on Agrias is the same faction slot as slot 2 on a
-    generic knight and a player running southern_sky generics gets a matching Agrias. THAT NAMING
-    IS AN INFERENCE, NOT A MEASUREMENT: an attempt to confirm it from hue statistics failed, since
-    the generic slot shifts have interquartile ranges of 26 to 36 degrees and are hand authored
-    per bin rather than formulaic. Renaming is one line in a recipe plus a re-bake.
 
 ## Backlog
 
@@ -264,7 +239,6 @@ that checklist.
   C# and the csproj auto merge clean. So the landing plan is to re apply the worldmap copy and
   verify steps onto the current scripts rather than merge the old ones, and to bisect the four
   suspects with the game closed.)
-
 
 ## Walled (blocked by engine / external)
 

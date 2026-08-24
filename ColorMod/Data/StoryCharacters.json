@@ -76,8 +76,7 @@
         "demon_hunter",
         "mysterious_knight",
         "mime_dancer",
-        "diplomat_blade",
-        "southern_sky"
+        "diplomat_blade"
       ]
     },
     {
@@ -294,8 +293,7 @@
       "availableThemes": [
         "original",
         "red_snake",
-        "water_rat",
-        "corpse_brigade"
+        "water_rat"
       ]
     },
     {
@@ -324,8 +322,7 @@
       "defaultTheme": "original",
       "availableThemes": [
         "original",
-        "silver_noble",
-        "southern_sky"
+        "silver_noble"
       ]
     },
     {
@@ -428,8 +425,7 @@
       "availableThemes": [
         "original",
         "blood_priest",
-        "bishop",
-        "southern_sky"
+        "bishop"
       ]
     },
     {
