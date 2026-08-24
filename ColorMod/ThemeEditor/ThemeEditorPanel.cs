@@ -384,8 +384,9 @@ namespace FFTColorCustomizer.ThemeEditor
             var compareTip = new ToolTip();
             compareTip.SetToolTip(_showOriginalCheckbox, "Show the original sprite next to your modified version for comparison");
 
-            // "Animate" plays the walk cycle for the current facing (CC-36). Disabled until
-            // a template with a derivable walk cycle (standard humanoid HD sheet) is selected.
+            // "Animate" plays the walk cycle for the current facing (CC-36; monsters, Chocobo
+            // and Construct 8 joined in CC-46). Disabled until a template with a derivable
+            // walk cycle (an HD sheet one of the four rigs can address) is selected.
             _animateCheckbox = new CheckBox
             {
                 Name = "AnimateCheckbox",

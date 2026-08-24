@@ -93,29 +93,39 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// Renders all <see cref="WalkCycle.BeatCount"/> walk-cycle frames for
         /// <paramref name="directionIndex"/>, loading the themed BMP once and reusing it for
-        /// every phase. Returns null if any phase comes back null (i.e. the layout doesn't
-        /// support the walk cycle, which the caller should have already checked via
-        /// <see cref="FrameLayout.SupportsWalkCycle"/>).
+        /// every phase. Monster rigs (MON/CYOKO) composite through
+        /// <see cref="TileWalkFrameCompositor"/>; humanoid rigs on an explicit-rect monster
+        /// sheet (Goblin, Skeleton, Mindflayer) composite with the STANDARD layout, since
+        /// their sheets really are standard humanoid layouts behind hand-picked static boxes
+        /// (CC-46). Characters whose static pose is a tight crop get their walk frames cropped
+        /// to the beats' shared content box, so the Zoom-mode preview keeps the sprite the
+        /// same size when the animation starts. Returns null if any phase comes back null
+        /// (i.e. a humanoid layout the walk cycle can't address, which the caller should have
+        /// already checked via <see cref="WalkCycleTypes.SheetSupportsWalk"/>).
         /// </summary>
         internal static List<Bitmap> RenderWalkFrames(string bmpPath, string imagesFolderName, byte[] modifiedPalette, int directionIndex)
         {
             var layout = FrameLayout.For(imagesFolderName);
             var cornerDir = ToCornerDirection(directionIndex);
-            // Each sheet is drawn for one of the game's two humanoid rigs; compositing with
-            // the other rig's arm offsets dislocates the arms (the CC-36 round-3 defect).
+            // Each sheet is drawn for one specific rig; compositing with another rig's
+            // offsets dislocates the arms (the CC-36 round-3 defect).
             var walkType = WalkCycleTypes.For(imagesFolderName);
+            bool monsterRig = walkType == WalkCycleType.Mon || walkType == WalkCycleType.Cyoko;
+            var humanoidLayout = layout.SupportsWalkCycle ? layout : FrameLayout.Standard;
 
             using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, modifiedPalette))
             {
                 var frames = new List<Bitmap>(WalkCycle.BeatCount);
                 for (int phase = 0; phase < WalkCycle.BeatCount; phase++)
                 {
-                    var frame = WalkFrameCompositor.ExtractWalkFrame(themedBmp, cornerDir, layout, phase, walkType);
+                    var frame = monsterRig
+                        ? TileWalkFrameCompositor.ExtractWalkFrame(themedBmp, cornerDir, phase, walkType)
+                        : WalkFrameCompositor.ExtractWalkFrame(themedBmp, cornerDir, humanoidLayout, phase, walkType);
                     if (frame == null)
                         return null;
                     frames.Add(frame);
                 }
-                return frames;
+                return layout.CropsWalkFramesToContent ? WalkFrameCrop.ToSharedContentBox(frames) : frames;
             }
         }
     }

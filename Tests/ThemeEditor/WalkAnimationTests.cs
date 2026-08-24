@@ -17,10 +17,10 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
     //
     // Standard humanoid HD sheets are 512x512, 4bpp indexed, 64x80 cells, 8 columns per row.
     // Row 1 holds the walk stride: cols 0-2 are the front-facing step (A, passing, B), cols
-    // 3-6 are the back-facing step (A, passing, B, passing). Non-standard sheets (Construct8,
-    // Chocobo, every explicit-rect monster) have no derivable walk frames, so they never
-    // support animation. See docs comment on FrameLayout.SupportsWalkCycle for the full
-    // derivation.
+    // 3-6 are the back-facing step (A, passing, B, passing). See docs comment on
+    // FrameLayout.SupportsWalkCycle for the full derivation. Non-standard sheets (Construct8,
+    // Chocobo, every explicit-rect monster) animate through the monster rigs since CC-46
+    // (MonsterWalkAnimationTests); only the HUMANOID tables are out of reach for them.
     public class WalkAnimationTests
     {
         [Fact]
@@ -542,7 +542,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         [Fact]
-        public void SupportsWalkAnimation_RequiresHdSheetAndStandardLayout()
+        public void SupportsWalkAnimation_RequiresHdSheetAndAddressableRig()
         {
             var modPath = Path.Combine(Path.GetTempPath(), "WalkAnimSupports_" + Guid.NewGuid().ToString("N"));
             var binPathNoHd = Path.Combine(Path.GetTempPath(), "walk_anim_test_" + Guid.NewGuid().ToString("N") + ".bin");
@@ -562,11 +562,12 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 knightModifier.LoadTemplate(binPathKnight, "TestKnight", modPath);
                 knightModifier.SupportsWalkAnimation.Should().BeTrue();
 
-                // (c) HD sheet present but the job's layout is non-standard -> not supported.
+                // (c) HD sheet present and the job's layout is non-standard: supported since
+                // CC-46 through the MON rig (Construct 8 is a Steel Giant, BATTLE.BIN 0x9A).
                 WriteWalkHdFixture(modPath, "Construct8", binPathConstruct8);
                 var construct8Modifier = new PaletteModifier();
                 construct8Modifier.LoadTemplate(binPathConstruct8, "Construct8", modPath);
-                construct8Modifier.SupportsWalkAnimation.Should().BeFalse();
+                construct8Modifier.SupportsWalkAnimation.Should().BeTrue();
             }
             finally
             {

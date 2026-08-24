@@ -115,16 +115,32 @@ namespace FFTColorCustomizer.Utilities
         // shape WalkCycle's coordinates assume.
         //
         // Non-standard sheets (Construct8's 96x96 grid, Chocobo's offset grid, every monster's
-        // explicit-rect layout) don't carry this layout, so they never support the walk cycle.
+        // explicit-rect layout) don't carry this layout, so they never use the HUMANOID walk
+        // tables. Since CC-46 they animate anyway: monster rigs (MON/CYOKO) address the sheet
+        // through MonsterWalkCycle, and the explicit-rect TYPE1/TYPE2 monsters (Goblin,
+        // Skeleton, Mindflayer) are standard humanoid sheets behind hand-picked static boxes.
+        // WalkCycleTypes.SheetSupportsWalk is the support decision; this property only says
+        // whether the HUMANOID tables' coordinates fit the layout.
 
         /// <summary>
         /// True only for the standard humanoid layout (see the derivation above). Construct 8's
         /// 96x96 columns, Chocobo's offset grid and every explicit-rect monster layout all
         /// return false, since their sheets don't match the coordinates <see cref="WalkCycle"/>
-        /// assumes.
+        /// assumes (they animate through <see cref="MonsterWalkCycle"/> instead, see CC-46).
         /// </summary>
         public bool SupportsWalkCycle =>
             !UsesExplicitRects && FrameWidth == 64 && FrameHeight == 80 && SwCol == 1
             && NwCol == 3 && Row == 0 && OffsetX == 0 && OffsetY == 0;
+
+        /// <summary>
+        /// True when this character's walk frames should be cropped to the beats' shared
+        /// content box before display (CC-46). Explicit-rect monsters and Chocobo's offset
+        /// grid show TIGHT static poses, so an uncropped walk frame (full rig box, mostly
+        /// padding) would make the sprite shrink in the Zoom-mode preview the moment Animate
+        /// is toggled. Standard humanoids and Construct 8 render static poses at the full
+        /// cell already, so cropping THEM would cause the opposite pop.
+        /// </summary>
+        public bool CropsWalkFramesToContent =>
+            UsesExplicitRects || OffsetX != 0 || OffsetY != 0;
     }
 }

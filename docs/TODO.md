@@ -77,6 +77,19 @@ that checklist.
     StoryCharacters.json. Separately the baker and the contract test only handled a character's
     FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
     her three appearances.
+- **[CC-46] Let monsters play their walk animation in the theme editor** (opened 2026-08-24) [BUILDING]
+  - Done means: the Animate checkbox works for every monster, Chocobo and Construct 8 instead of
+    greying out, each one plays the same walk the game shows, and the sprite stays the same size
+    on screen when the animation starts. (Tech: BATTLE.BIN 0x2D748 says Goblin and Skeleton are
+    TYPE1 rigs, Mindflayer is TYPE2, so the existing humanoid compositor covers them; Chocobo is
+    CYOKO and the other twelve families plus Construct 8 are MON, whose walk data comes from the
+    same Shishi SEQ/SHP parser port as CC-36: anims 6/7, same 8-beat palindrome and 100/133/167ms
+    delays, MON beats are single 96x96 HD tiles and CYOKO beats are six-tile composites with
+    flips, baked into a new MonsterWalkCycle table; walk frames for explicit-rect and offset-grid
+    characters crop to the beats' shared content box so the Zoom-mode preview does not shrink.)
+  - Verify: the suite's new position asserts pin every baked tile box to the parsed SEQ/SHP
+    values, and the owner toggles Animate on a monster, Chocobo and Construct 8 in the editor and
+    sees the real walk at the right size in all four facings.
 
 ## Backlog
 

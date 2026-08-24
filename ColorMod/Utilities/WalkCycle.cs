@@ -4,18 +4,23 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Which of the game's two humanoid animation rigs a sprite sheet was drawn for. FFT ships
-    /// two SEQ/SHP pairs for standard humanoids: TYPE1 (the squire/armored skeleton) and TYPE2
-    /// (the robed/skirted skeleton). Both rigs share body cells, arm source tiles and beat
-    /// timing; ONLY the per-beat arm destination offsets differ, because each rig's arm art is
-    /// drawn at a different position inside its tile. Compositing a sheet with the other rig's
-    /// offsets dislocates the arms (the CC-36 round-3 defect). <see cref="WalkCycleTypes"/>
-    /// says which rig each roster character uses.
+    /// Which of the game's animation rigs a sprite sheet was drawn for. FFT ships two SEQ/SHP
+    /// pairs for standard humanoids: TYPE1 (the squire/armored skeleton) and TYPE2 (the
+    /// robed/skirted skeleton). Both rigs share body cells, arm source tiles and beat timing;
+    /// ONLY the per-beat arm destination offsets differ, because each rig's arm art is drawn
+    /// at a different position inside its tile. Compositing a sheet with the other rig's
+    /// offsets dislocates the arms (the CC-36 round-3 defect). Monsters add two more rigs
+    /// (CC-46): MON (most families plus Construct 8, one tile per beat) and CYOKO (Chocobo,
+    /// multi-tile composites), whose tables live in <see cref="MonsterWalkCycle"/> and share
+    /// this class's beat count and durations. <see cref="WalkCycleTypes"/> says which rig
+    /// each roster character uses.
     /// </summary>
     public enum WalkCycleType
     {
         Type1,
-        Type2
+        Type2,
+        Mon,
+        Cyoko
     }
 
     /// <summary>

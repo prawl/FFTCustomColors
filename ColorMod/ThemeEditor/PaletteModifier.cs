@@ -164,10 +164,9 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// True when the walk-cycle preview (see <see cref="GetWalkPreviewFrames"/>) can
         /// actually render: the modifier is loaded, has a job/mod path to find an HD sheet
-        /// with, that sheet exists, and its <see cref="FrameLayout"/> is the standard humanoid
-        /// layout the walk cycle is derived from (see CC-36). Monsters, Chocobo and Construct 8
-        /// use non-standard layouts and always come back false here: deliberate V1 scope, not
-        /// a bug.
+        /// with, that sheet exists, and the character's rig can address it (see CC-36 for the
+        /// humanoid rigs and CC-46 for the monster ones: MON/CYOKO tables always can, humanoid
+        /// tables need the standard layout or an explicit-rect monster sheet).
         /// </summary>
         public bool SupportsWalkAnimation
         {
@@ -180,7 +179,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 if (HdSheetPreview.ResolveSheetPath(_modPath, imagesFolderName) == null)
                     return false;
 
-                return FrameLayout.For(imagesFolderName).SupportsWalkCycle;
+                return WalkCycleTypes.SheetSupportsWalk(
+                    FrameLayout.For(imagesFolderName), WalkCycleTypes.For(imagesFolderName));
             }
         }
 
