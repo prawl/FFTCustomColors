@@ -301,6 +301,15 @@ that checklist.
   treat it as a parts shop to re-apply through today's registry pipeline, not something to merge.
   Check which sprite bins and unit folder that mod actually ships before promising anything.)
 
+- [CC-43] 2026-08-24: Gaffgarion's Mustache slider also recolours his eyes, because both are
+  painted by the same palette colour. Separate them so the mustache can be themed without giving
+  him tinted eyeballs. (Tech: his Mustache group is index 2 alone, and index 2 is also his eye
+  whites. This is a Type C shared index split per the hair fix process doc: find which side has a
+  tone compatible receiving index (eyes want to stay near white and untinted, so likely the eye
+  pixels move to a neutral index or the mustache pixels move to a freed one), run the palette
+  check first as the go or no go, then the flood fill or byte surgery on his tex pair and HD BMPs
+  with the portrait excluded. Pixel counts are tiny on both sides, so this is a small surgery.)
+
 ## Walled (blocked by engine / external)
 
 - Some story characters (Mustadio, Rapha, Meliadoul, Construct 8 observed) need a game restart
