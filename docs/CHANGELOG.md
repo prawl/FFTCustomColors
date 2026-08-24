@@ -8,6 +8,24 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-46] SHIPPED 488815fe 2026-08-24: monsters walk too. The Animate checkbox now works for
+  all seventeen characters it used to grey out (the fifteen monster families, the Chocobo and
+  Construct 8): each plays the same walk the game shows, at the game's own uneven timing, and
+  the sprite stays the same size on screen when the animation starts. The game's own data made
+  the split: Goblin, Skeleton and Mindflayer turn out to be built on the humanoid skeletons, so
+  the CC-36 walk covers them arms and all; the Chocobo has its own six-piece rig; everyone else
+  walks the simple monster way where each step is one whole picture. All seventeen were checked
+  frame by frame against their real sheets before any code, and evidence GIFs at real timing
+  were rendered for the owner's review; shipped on the owner's go.
+  (Tech: rigs from BATTLE.BIN sprite attributes at 0x2D748; MON/CYOKO SEQ+SHP parsed with the
+  CC-36 Shishi parser port, walk anims 6/7, 8-beat palindrome, 100/133/167ms; generated
+  MonsterWalkCycle.cs baked by scripts/walkcycle (fetch, parser, baker all committed), never
+  hand-edit; TileWalkFrameCompositor for tile-list beats, WalkFrameCrop union-content crop
+  gated by FrameLayout.CropsWalkFramesToContent with Construct 8 exempt; position asserts on
+  every baked tile proven red by sabotage, plus a 17-family real-sheet sweep. Aevis note: its
+  hand-picked static pose is a perched bird while its walk is the game's hover-flap stride, so
+  its pose shifts on toggle by design.)
+
 - [CC-36] SHIPPED 402a361a 2026-08-24: the theme editor preview can walk. An Animate checkbox
   beside Compare plays the game's real walk animation for the current facing in the live edited
   colours: the true eight beat stride with both feet, arms composited onto the sheet's armless
