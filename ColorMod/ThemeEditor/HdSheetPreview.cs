@@ -91,7 +91,7 @@ namespace FFTColorCustomizer.ThemeEditor
         }
 
         /// <summary>
-        /// Renders all <see cref="FrameLayout.WalkPhaseCount"/> walk-cycle frames for
+        /// Renders all <see cref="WalkCycle.BeatCount"/> walk-cycle frames for
         /// <paramref name="directionIndex"/>, loading the themed BMP once and reusing it for
         /// every phase. Returns null if any phase comes back null (i.e. the layout doesn't
         /// support the walk cycle, which the caller should have already checked via
@@ -104,8 +104,8 @@ namespace FFTColorCustomizer.ThemeEditor
 
             using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, modifiedPalette))
             {
-                var frames = new List<Bitmap>(FrameLayout.WalkPhaseCount);
-                for (int phase = 0; phase < FrameLayout.WalkPhaseCount; phase++)
+                var frames = new List<Bitmap>(WalkCycle.BeatCount);
+                for (int phase = 0; phase < WalkCycle.BeatCount; phase++)
                 {
                     var frame = SheetExtractor.ExtractWalkFrame(themedBmp, cornerDir, layout, phase);
                     if (frame == null)
