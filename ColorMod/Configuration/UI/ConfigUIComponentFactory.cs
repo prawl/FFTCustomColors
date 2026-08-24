@@ -50,7 +50,9 @@ namespace FFTColorCustomizer.Configuration.UI
             {
                 Text = text,
                 Dock = DockStyle.Fill,
-                TextAlign = isHeader ? ContentAlignment.MiddleCenter : ContentAlignment.TopLeft,
+                // Headers left-align to a shared edge so the collapse arrows line up in a
+                // column; centering made every arrow land wherever its title's width put it
+                TextAlign = isHeader ? ContentAlignment.MiddleLeft : ContentAlignment.TopLeft,
                 ForeColor = UIConfiguration.TextColor
             };
 
@@ -58,7 +60,7 @@ namespace FFTColorCustomizer.Configuration.UI
             {
                 label.Font = UIConfiguration.SectionHeaderFont;
                 label.BackColor = UIConfiguration.HeaderBackground;
-                label.Padding = new Padding(0, 5, 0, 5);
+                label.Padding = new Padding(12, 5, 0, 5);
                 label.Cursor = Cursors.Hand;
             }
             else
