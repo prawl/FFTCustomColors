@@ -283,6 +283,15 @@ that checklist.
   and sprites where index 1 doubles as another dark detail tone; the theme editor preview makes
   each character a quick visual check.)
 
+- [CC-41] 2026-08-24: BUG. Gaffgarion's theme is not applying in game, reported by the owner
+  while testing the Delita release. Notable because his two built in themes were owner live
+  verified on 2026-08-21, so this is either a regression since, a different theme kind (user
+  theme rather than built in), or a surface his earlier check did not cover. (Tech: first
+  suspects are his TWO sprite bins, baruna and h61, where a path that only handles a character's
+  first sprite would leave his second appearance vanilla, and the user theme apply path fixed
+  for CamelCase names in aa53bfb5, which Gaffgarion's single word name should not hit but the
+  live log at logs/live_log.txt will settle; reproduce, read the log, then bisect.)
+
 ## Walled (blocked by engine / external)
 
 - Some story characters (Mustadio, Rapha, Meliadoul, Construct 8 observed) need a game restart
