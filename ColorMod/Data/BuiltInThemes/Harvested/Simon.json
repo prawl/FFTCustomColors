@@ -1,0 +1,10 @@
+{
+  "_comment": "CC-31 harvested theme. This is NOT a designed recipe: it promotes one of the game's own unused palette slots into slot 0 verbatim, so the colours are the original artists' work, not ours. Slot 2 of simon. Cool grey and yellow robes go warm brown and dull red; 13 of 16 entries differ. Theme names follow the slot convention already shipped on the generic jobs (1 northern_sky, 2 southern_sky, 3 corpse_brigade, 4 lucavi); the slot index is the engine's faction selector, so slot 2 here is the same faction slot as slot 2 on a generic knight. That naming is an inference, not a measurement: rename here and re-bake to change it.",
+  "character": "Simon",
+  "themes": [
+    {
+      "name": "southern_sky",
+      "sourceSlot": 2
+    }
+  ]
+}

@@ -210,3 +210,36 @@ theme — that is the test doing its job, and the fix is to re-bake, not to rela
    key so that transform produces the label you want; there is no separate display-name field.
 5. **Do not judge a run by the exit code.** Read the failing test *names*. This repo has been
    burned by a green-looking suite that never asserted anything.
+
+## Harvested themes (CC-31): free colours the game already made
+
+Some unit bins carry finished alternate colour schemes the artists left in palette slots 1 to 7.
+Shipping one is not designing a theme, it is promoting that slot over slot 0 verbatim. Prefer this
+over inventing colours when a viable slot exists: the four themes the owner rates best turned out
+to be exactly this.
+
+Recipe lives at `ColorMod/Data/BuiltInThemes/Harvested/<Character>.json`:
+
+    { "character": "Elmdore", "themes": [ { "name": "southern_sky", "sourceSlot": 2 } ] }
+
+Then `dotnet run --project tools/ThemeBaker` and add the theme to the character's expected list in
+`Tests/Registry/NpcRosterContractTests.cs` if they are an NPC.
+
+Differences from a designed recipe, all of which make this the easier path:
+
+- No section mapping is involved, so it works for characters whose mapping lives under
+  `SectionMappings/Story/` (Agrias) exactly as for the NPCs. The sprite list comes from
+  `StoryCharacters.json`.
+- It is a byte move, so none of the CC-33 colour conversion hazards apply. No quantisation, no
+  shade generation, no truncated slider readout.
+- Every sprite the character owns is baked, so Agrias gets both `aguri` and `kanba`.
+
+**Check the slot is not vacuous before you write the recipe.** A census found three candidates
+that were byte identical or near identical to slot 0, which would have shipped a dropdown entry
+that changes nothing. The baker refuses an identical slot outright, and
+`HarvestedThemeContractTests` asserts non-vacuity per sprite, but the cheapest check is counting
+how many of the 16 entries differ from slot 0 before committing to a name.
+
+**Naming.** The generic jobs already ship slots 1 to 4 as northern_sky, southern_sky,
+corpse_brigade and lucavi. Reuse that convention, since the slot index is the engine's faction
+selector and a player running southern_sky generics then gets a matching story character.
