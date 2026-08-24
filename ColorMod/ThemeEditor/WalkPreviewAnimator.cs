@@ -13,9 +13,6 @@ namespace FFTColorCustomizer.ThemeEditor
     /// </summary>
     internal sealed class WalkPreviewAnimator : IDisposable
     {
-        /// <summary>4 beats x 160ms = ~0.64s per full stride, eyeballed against the game's walking pace.</summary>
-        public const int FrameIntervalMs = 160;
-
         private readonly Func<PaletteModifier> _getModified;
         private readonly Func<PaletteModifier> _getOriginal;
         private readonly Func<int> _getDirection;
@@ -27,6 +24,11 @@ namespace FFTColorCustomizer.ThemeEditor
         internal int Phase { get; private set; }
         internal List<Bitmap> ModifiedFrames { get; private set; }
         internal List<Bitmap> OriginalFrames { get; private set; }
+
+        /// <summary>Test seam: the timer's current interval, so tests can pin the variable
+        /// per-beat timing (<see cref="WalkCycle.BeatDurationsMs"/>) without reaching into a
+        /// private field.</summary>
+        internal int TimerIntervalMs => _timer.Interval;
 
         public WalkPreviewAnimator(
             Func<PaletteModifier> getModified,
@@ -42,7 +44,6 @@ namespace FFTColorCustomizer.ThemeEditor
             _paintOriginal = paintOriginal;
 
             _timer = new System.Windows.Forms.Timer();
-            _timer.Interval = FrameIntervalMs;
             _timer.Tick += (s, e) => AdvanceOnce();
         }
 
@@ -52,6 +53,7 @@ namespace FFTColorCustomizer.ThemeEditor
             Phase = 0;
             BuildModifiedCache();
             BuildOriginalCache();
+            _timer.Interval = WalkCycle.BeatDurationsMs[Phase];
             _timer.Start();
             PaintPhase();
         }
@@ -98,7 +100,8 @@ namespace FFTColorCustomizer.ThemeEditor
             if (!IsRunning)
                 return;
 
-            Phase = (Phase + 1) % FrameLayout.WalkPhaseCount;
+            Phase = (Phase + 1) % WalkCycle.BeatCount;
+            _timer.Interval = WalkCycle.BeatDurationsMs[Phase];
             PaintPhase();
         }
 

@@ -105,44 +105,26 @@ namespace FFTColorCustomizer.Utilities
         //
         // Derived by direct inspection of shipped HD BMPs (Knight_Male, Monk_Male,
         // Squire_Female, RamzaChapter1, Agrias, DarkKnight_Male, Lettie) this session. Every
-        // standard humanoid sheet is 512x512, 4bpp indexed, 64x80 cells, 8 columns per row:
+        // standard humanoid sheet is 512x512, 4bpp indexed, 64x80 cells, 8 columns per row.
         //
-        //   Row 0 = the five standing poses (W, SW, S, NW, N, ...).
-        //   Row 1 = the walk stride: cols 0-2 are the front-facing step (A, passing, B), cols
-        //           3-6 are the back-facing step (A, passing, B, passing).
+        // Rework round 2: the walk-cycle BODY poses live in row 1 cols 0-2, row 0 cols 5-6, and
+        // row 2 col 0; the two arm sub-sprites the game composites per beat live in 48x48 blocks
+        // in the sheet region y 160-256. The full 8-beat composition table (which body cell,
+        // which arm boxes, at what offsets, for how long) lives in WalkCycle, with its own
+        // SEQ/SHP provenance comment; this struct only gates whether a layout is the standard
+        // shape WalkCycle's coordinates assume.
         //
         // Non-standard sheets (Construct8's 96x96 grid, Chocobo's offset grid, every monster's
-        // explicit-rect layout) don't carry this row-1 stride in a derivable place, so they
-        // never support the walk cycle.
-
-        /// <summary>Number of distinct poses in one full walk cycle (one full stride, looping).</summary>
-        public const int WalkPhaseCount = 4;
-
-        // Row 1, cols 0/1/2, replaying the passing pose (1) for the loop's closing beat.
-        private static readonly int[] FrontWalkColumns = { 0, 1, 2, 1 };
-        // Row 1, cols 3/4/5/6: the back-facing stride already has four distinct cells.
-        private static readonly int[] BackWalkColumns = { 3, 4, 5, 6 };
+        // explicit-rect layout) don't carry this layout, so they never support the walk cycle.
 
         /// <summary>
         /// True only for the standard humanoid layout (see the derivation above). Construct 8's
         /// 96x96 columns, Chocobo's offset grid and every explicit-rect monster layout all
-        /// return false, since their sheets have no row-1 stride to sample.
+        /// return false, since their sheets don't match the coordinates <see cref="WalkCycle"/>
+        /// assumes.
         /// </summary>
         public bool SupportsWalkCycle =>
             !UsesExplicitRects && FrameWidth == 64 && FrameHeight == 80 && SwCol == 1
             && NwCol == 3 && Row == 0 && OffsetX == 0 && OffsetY == 0;
-
-        /// <summary>
-        /// The row-1 cell (col, row) for one beat of the walk cycle. <paramref name="sourceDirection"/>
-        /// is SW or NW only; mirroring to the SE/NE facing is the extractor's job, exactly as
-        /// for the standing poses. <paramref name="phase"/> is taken modulo <see cref="WalkPhaseCount"/>
-        /// defensively.
-        /// </summary>
-        public Point GetWalkCell(Direction sourceDirection, int phase)
-        {
-            int p = ((phase % WalkPhaseCount) + WalkPhaseCount) % WalkPhaseCount;
-            var columns = sourceDirection == Direction.NW ? BackWalkColumns : FrontWalkColumns;
-            return new Point(columns[p], 1);
-        }
     }
 }
