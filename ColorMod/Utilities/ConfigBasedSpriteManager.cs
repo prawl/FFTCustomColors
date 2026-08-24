@@ -769,12 +769,22 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// Normalizes character names to proper case for user theme lookups.
-        /// Handles multi-word names like "ramzachapter4" → "RamzaChapter4"
+        /// The apply path lowercases names for folder work; user themes are stored under the
+        /// registry casing, so the registry is the source of truth here. The hand-maintained
+        /// Ramza cases below stay as a fallback for inputs the registry does not know — a
+        /// first-letter-only recapitalization silently broke every multi-word name after
+        /// Ramza's (DelitaChapter23 -> "Delitachapter23", found live 2026-08-24).
         /// </summary>
         private string NormalizeCharacterName(string characterName)
         {
             if (string.IsNullOrEmpty(characterName))
                 return characterName;
+
+            // Registry casing wins whenever the name is a registered character
+            var registered = _characterService.GetAllCharacters()
+                .FirstOrDefault(c => string.Equals(c.Name, characterName, StringComparison.OrdinalIgnoreCase));
+            if (registered != null)
+                return registered.Name;
 
             // Handle Ramza chapter variations
             var lowerName = characterName.ToLower();

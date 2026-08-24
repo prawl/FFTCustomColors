@@ -237,7 +237,8 @@ One commit per job — the TEX pair + the HD BMP. Message: `Hair-highlight fix: 
 Delita Ch1's index 14 painted both the face's temple/jaw shading AND the
 gold-trim shadow on arms, belt, gloves and boots, so theming Arms & Belt
 tinted his face. Fix: remap the FACE pixels 14 → 15 (skin base) in tex_836,
-tex_837 and the HD BMP — 841 px over three escalating passes — leaving the
+tex_837 and the HD BMP — 910 px over four escalating passes (a final
+skin-contact fixpoint sweep followed the three below) — leaving the
 gear pixels on 14. The section mapping then needs no shared-index compromise
 at all. What transfers from Type B, and what this case added:
 

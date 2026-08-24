@@ -247,4 +247,106 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             throw new InvalidOperationException("Repo root with ColorMod/Data/StoryCharacters.json not found");
         }
     }
+
+    /// <summary>
+    /// The apply path lowercases character names for folder work and then reconstructs the
+    /// cased name for the user-theme lookup. Single-word names (Argath) survive that round
+    /// trip, so NpcThemePipelineTests never caught the mangling; multi-word CamelCase names
+    /// (DelitaChapter23 -> "Delitachapter23") did not, and their user themes silently never
+    /// reached the game. Regression: Delita's chapters, found live 2026-08-24.
+    /// </summary>
+    [Collection("RegistryTests")]
+    public class CamelCaseNpcThemePipelineTests : IDisposable
+    {
+        private const string Npc = "DelitaChapter23";
+        private const string NpcSprite = "dily2";
+        private const string ThemeName = "royal_test";
+
+        private readonly string _modPath;
+        private readonly string _unitPath;
+
+        public CamelCaseNpcThemePipelineTests()
+        {
+            _modPath = Path.Combine(Path.GetTempPath(), $"FFTCC_CamelNpc_{Guid.NewGuid()}");
+            _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(Path.Combine(_unitPath, "sprites_original"));
+
+            Directory.CreateDirectory(Path.Combine(_modPath, "Data"));
+            File.Copy(
+                Path.Combine(RepoRoot(), "ColorMod", "Data", "StoryCharacters.json"),
+                Path.Combine(_modPath, "Data", "StoryCharacters.json"));
+
+            File.Copy(
+                Path.Combine(RepoRoot(), "ColorMod", "FFTIVC", "data", "enhanced", "fftpack",
+                    "unit", "sprites_original", $"battle_{NpcSprite}_spr.bin"),
+                Path.Combine(_unitPath, "sprites_original", $"battle_{NpcSprite}_spr.bin"));
+
+            new UserThemeService(_modPath).SaveTheme(Npc, ThemeName, InvertedVanillaPalette());
+
+            CharacterServiceSingleton.SetModPath(_modPath);
+            UserThemeServiceSingleton.Initialize(_modPath);
+        }
+
+        public void Dispose()
+        {
+            CharacterServiceSingleton.Reset();
+            UserThemeServiceSingleton.Reset();
+            try
+            {
+                if (Directory.Exists(_modPath))
+                    Directory.Delete(_modPath, true);
+            }
+            catch
+            {
+                // temp cleanup is best effort
+            }
+        }
+
+        [Fact]
+        public void CamelCase_Npc_User_Theme_Is_Applied_To_The_Sprite_The_Game_Reads()
+        {
+            var configPath = Path.Combine(_modPath, "Config.json");
+            var configManager = new ConfigurationManager(configPath);
+            var characterService = new CharacterDefinitionService();
+            characterService.LoadFromJson(Path.Combine(_modPath, "Data", "StoryCharacters.json"));
+
+            var config = new Config();
+            typeof(Config).GetProperty(Npc)!.SetValue(config, ThemeName);
+            configManager.SaveConfig(config);
+
+            new ConfigBasedSpriteManager(_modPath, configManager, characterService).ApplyConfiguration();
+
+            var applied = Path.Combine(_unitPath, $"battle_{NpcSprite}_spr.bin");
+            Assert.True(File.Exists(applied),
+                $"{Npc}'s themed sprite was never written to {applied}");
+            Assert.Equal(
+                InvertedVanillaPalette(),
+                File.ReadAllBytes(applied).Take(512).ToArray());
+        }
+
+        private byte[] InvertedVanillaPalette()
+        {
+            var vanilla = File.ReadAllBytes(
+                Path.Combine(_unitPath, "sprites_original", $"battle_{NpcSprite}_spr.bin"));
+            var palette = new byte[512];
+            Array.Copy(vanilla, 0, palette, 0, 512);
+
+            for (int i = 2; i < palette.Length; i++)
+                palette[i] ^= 0xFF;
+
+            return palette;
+        }
+
+        private static string RepoRoot()
+        {
+            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "ColorMod", "Data", "StoryCharacters.json")))
+                    return dir.FullName;
+                dir = dir.Parent;
+            }
+            throw new InvalidOperationException("Repo root with ColorMod/Data/StoryCharacters.json not found");
+        }
+    }
 }
