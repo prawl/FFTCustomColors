@@ -24,6 +24,15 @@ Split-Path $MyInvocation.MyCommand.Path | Push-Location
 
 Write-Host "Building FFT Color Mod (DEV MODE)..." -ForegroundColor Green
 
+# Close the game if it's running: the deploy overwrites files the game holds open
+# (the mod DLL is loaded in-process), so a live game means a partial or failed copy.
+$fftProcess = Get-Process fft_enhanced -ErrorAction SilentlyContinue
+if ($fftProcess) {
+    Write-Host "Closing running game (fft_enhanced.exe) so the deploy can overwrite its files..." -ForegroundColor Yellow
+    $fftProcess | Stop-Process -Force
+    Start-Sleep -Seconds 2
+}
+
 # Clean ALL FFTColorCustomizer installations to prevent conflicts
 Write-Host "Cleaning up all FFTColorCustomizer installations..." -ForegroundColor Yellow
 $modsDir = "$env:RELOADEDIIMODS"
