@@ -53,6 +53,14 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
+- **[CC-34] Check every data file the mod ships for shape at build time** (opened 2026-08-24) [BUILDING]
+  - Done means: a typo in any shipped JSON file, a recipe, a registry, a section mapping or the
+    mod's own metadata, fails the test suite with the file named, instead of failing silently in
+    game; and a new data file cannot be added without being covered, because an unregistered file
+    is itself a failure. (Tech: JsonSchema.Net in the test project only, schemas under
+    Tests/Data/Schemas, JsonSchemaContractTests walks ColorMod and validates each family.)
+  - Verify: the suite goes red when a hex colour in a recipe is deliberately broken and green when
+    it is restored, proven once during the build; CI runs the same suite on every push.
 - **[CC-21] Give the twelve story NPCs colour themes of their own** (opened 2026-08-13) [BUILDING]
   - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
     the colours are ones the owner has approved on screen, and choosing a theme actually recolours
@@ -218,12 +226,6 @@ that checklist.
   SkinColor 0.39 to 0.13, Reis platinum Shirt 0.23 to 0.02. Decide separately whether to import
   the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
   grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
-
-- [CC-34] 2026-08-24: Every settings and data file we ship is JSON that nothing checks for shape,
-  so a typo in a recipe or registry fails silently at runtime instead of loudly at build time.
-  Validate all repo JSON against schemas. (Tech: StoryCharacters.json, SectionMappings, BuiltInThemes
-  recipes and UserThemes registry are the shipping surfaces; a contract test that walks the repo and
-  validates each family against a schema file would ride the existing suite and CI unchanged.)
 
 - [CC-35] 2026-08-24: Delita is not customisable at all. Add him as a new NPC with themes of his
   own. He likely appears as three different sprites across the story the way Ramza does, roughly

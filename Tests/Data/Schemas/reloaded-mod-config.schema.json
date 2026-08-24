@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "ModId",
+    "ModName",
+    "ModAuthor",
+    "ModVersion",
+    "ModDll"
+  ],
+  "properties": {
+    "ModId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._]+$"
+    },
+    "ModName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ModAuthor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ModVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ModDll": {
+      "type": "string",
+      "pattern": "\\.dll$"
+    },
+    "ModDependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "SupportedAppId": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

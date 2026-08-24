@@ -129,9 +129,9 @@ function Invoke-UnitTestGate {
         [string]$FailVerb
     )
 
-    Write-Host "Running the contract-test gate (Todo + Log contracts)..." -ForegroundColor Cyan
+    Write-Host "Running the contract-test gate (Todo + Log + JSON schema contracts)..." -ForegroundColor Cyan
     & dotnet test "$PipelineRepoRoot\FFTColorCustomizer.Tests.csproj" --nologo -p:WarningLevel=0 `
-        --filter "FullyQualifiedName~TodoContractTests|FullyQualifiedName~LogContractTests"
+        --filter "FullyQualifiedName~TodoContractTests|FullyQualifiedName~LogContractTests|FullyQualifiedName~JsonSchemaContractTests"
     if ($LASTEXITCODE -ne 0) {
         throw "REFUSING TO ${FailVerb}: the contract tests failed (see above)."
     }
