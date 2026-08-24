@@ -82,7 +82,7 @@ namespace FFTColorCustomizer.Configuration
             }
 
             // Add header for WotL Jobs
-            var wotlHeader = CreateCollapsibleHeader("WotL Jobs", _wotlJobsCollapsed, row++);
+            var wotlHeader = CreateCollapsibleHeader("WotL Jobs (Mod Content)", _wotlJobsCollapsed, row++);
             wotlHeader.Click += (sender, e) => ToggleWotLJobsVisibility(wotlHeader);
 
             // Load WotL jobs
@@ -231,7 +231,7 @@ namespace FFTColorCustomizer.Configuration
             var isWotlJob = wotlJobs.Contains(args.JobName);
             var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
             var isNpcCharacter = isStoryCharacter && _storyCharacters[args.JobName].Category == "NPC";
-            var sectionName = isWotlJob ? "WotL Jobs"
+            var sectionName = isWotlJob ? "WotL Jobs (Mod Content)"
                 : isNpcCharacter ? "NPCs"
                 : isMonster ? "Monsters"
                 : (isStoryCharacter ? "Story Characters" : "Generic Characters");

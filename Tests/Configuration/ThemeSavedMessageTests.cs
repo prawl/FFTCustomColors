@@ -74,7 +74,7 @@ namespace Tests.Configuration
             var message = form.BuildThemeSavedMessage(args);
 
             Assert.Equal(
-                "Theme 'Midnight' saved successfully!\n\nYou can select it under \"DarkKnight (Male)\" in the \"WotL Jobs\" section above.",
+                "Theme 'Midnight' saved successfully!\n\nYou can select it under \"DarkKnight (Male)\" in the \"WotL Jobs (Mod Content)\" section above.",
                 message);
         }
 

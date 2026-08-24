@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
@@ -111,6 +112,8 @@ namespace FFTColorCustomizer.Configuration
             Controls.Add(buttonPanel);
         }
 
+        private readonly List<Label> _collapsibleHeaders = new();
+
         private Label CreateCollapsibleHeader(string text, bool collapsed, int row)
         {
             var header = ConfigUIComponentFactory.CreateCharacterLabel(
@@ -121,7 +124,39 @@ namespace FFTColorCustomizer.Configuration
             _mainPanel.SetColumnSpan(header, 3);
             _mainPanel.Controls.Add(header, 0, row);
 
+            // Count==0 guards the one-time Resize subscription. If ReloadForm ever starts
+            // clearing _collapsibleHeaders, move this subscription to the constructor or
+            // it will re-subscribe on every rebuild.
+            if (_collapsibleHeaders.Count == 0)
+                Resize += (s, e) => AlignCollapsibleHeaders();
+            _collapsibleHeaders.Add(header);
+            header.TextChanged += (s, e) => AlignCollapsibleHeaders();
+            AlignCollapsibleHeaders();
+
             return header;
+        }
+
+        /// <summary>
+        /// Headers read as a centered block with a shared left edge: every title starts at
+        /// the same x (so the collapse arrows form one column), and that edge sits where the
+        /// WIDEST title would be centered in the window. The pad derives from the FORM's
+        /// width, never the label's own size: padding feeds the label's preferred size,
+        /// which feeds this auto-sizing table's column widths, so a label-size-driven pad
+        /// is a feedback loop (it collapsed the headers to text width when tried).
+        /// </summary>
+        private void AlignCollapsibleHeaders()
+        {
+            int maxTextWidth = 0;
+            foreach (var h in _collapsibleHeaders)
+                maxTextWidth = Math.Max(maxTextWidth,
+                    TextRenderer.MeasureText(h.Text, h.Font).Width);
+
+            int pad = Math.Max(0, (ClientSize.Width - maxTextWidth) / 2);
+            foreach (var h in _collapsibleHeaders)
+            {
+                if (h.Padding.Left != pad)
+                    h.Padding = new Padding(pad, 5, 0, 5);
+            }
         }
     }
 }
