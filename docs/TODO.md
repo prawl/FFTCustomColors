@@ -53,6 +53,10 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
+  - Owner re-raised 2026-08-24: the console still prints far too many unnecessary info lines.
+    The two sink core already shipped (stages 1 and 2, v3.1.2); the quieting he is asking for
+    is exactly the remaining conversion sweeps plus the strictness flip, so finishing stages
+    3 to 6 is the fix and the console noise is the acceptance test.
 - **[CC-21] Give the twelve story NPCs colour themes of their own** (opened 2026-08-13) [BUILDING]
   - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
     the colours are ones the owner has approved on screen, and choosing a theme actually recolours
@@ -99,6 +103,12 @@ that checklist.
     shadow specks on his red tunic, so the tunic specks were moved onto the under armour's own
     dark red at the pixel level (284 pixels across the texture pair and the preview sheets,
     portrait untouched). Only chapter 4 remains.
+  - Chapter 4 finished 2026-08-24: three sections (Armor, Cape, Skin Color) after the most
+    tangled calibration of the three. Three pixel level splits untangled shared colours: the
+    cape's stipple left the hair colour, the armour's shading left the skin colours, and the
+    whole head left the armour colours, about ten thousand pixels across the texture pair and
+    preview sheets, portrait untouched every time. Hair on this chapter deliberately stays
+    original by owner choice. Owner live pass underway.
 
 ## Backlog
 
@@ -281,6 +291,19 @@ that checklist.
   character's expected geometry, a converter from the uploaded sheet into a battle_<sprite>_spr
   bin (and possibly HD tex), and a user theme registration path alongside the existing palette
   based user themes.)
+
+- [CC-38] 2026-08-24: In the theme editor you can only start from a character's built in template;
+  your own saved themes are not offered as a starting point, so editing an existing theme means
+  rebuilding it from scratch. List the user's custom themes at the bottom of the Templates dropdown
+  so picking one loads it for editing. (Tech: user themes live per character via UserThemeService
+  and are browsable in MyThemesPanel; the ask is a group at the bottom of ThemeEditorPanel's
+  template dropdown that resolves to the saved palette instead of the vanilla template.)
+
+- [CC-39] 2026-08-24: NPCs should come before Monsters wherever the two groups are listed, and
+  today Monsters sit first. Swap the two groups and their items in the theme editor template
+  dropdown and any other surface that orders them, such as the config window sections. (Tech:
+  reorder the group blocks in ThemeEditorPanel's dropdown construction and check
+  ConfigurationForm's section loading order.)
 
 ## Walled (blocked by engine / external)
 
