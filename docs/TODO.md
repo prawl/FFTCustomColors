@@ -219,6 +219,20 @@ that checklist.
   the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
   grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
 
+- [CC-34] 2026-08-24: Every settings and data file we ship is JSON that nothing checks for shape,
+  so a typo in a recipe or registry fails silently at runtime instead of loudly at build time.
+  Validate all repo JSON against schemas. (Tech: StoryCharacters.json, SectionMappings, BuiltInThemes
+  recipes and UserThemes registry are the shipping surfaces; a contract test that walks the repo and
+  validates each family against a schema file would ride the existing suite and CI unchanged.)
+
+- [CC-35] 2026-08-24: Delita is not customisable at all. Add him as a new NPC with themes of his
+  own. He likely appears as three different sprites across the story the way Ramza does, roughly
+  chapter 1, chapters 2 and 3, and chapter 4, so he may need to be three dropdown entries; which
+  sprite bins he actually uses is UNVERIFIED and is the first thing to check. (Tech: none of the 87
+  bins in sprites_original look like his; the classic names to hunt for are dirita, dirita2 and
+  dirita3, mirroring ramuza, ramuza2 and ramuza3. Extraction from the game pacs may be needed
+  before the CC-21 NPC pipeline can take him.)
+
 - [CC-32] 2026-08-21: Ramza's little figure that walks around the world map keeps his original
   colours when a theme is applied, so a themed Ramza looks right in battle and wrong on the map.
   This was built once and never landed, and the half that works is further along than "we tried
