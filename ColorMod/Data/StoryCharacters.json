@@ -310,6 +310,51 @@
       ]
     },
     {
+      "name": "DelitaChapter1",
+      "category": "NPC",
+      "spriteNames": [
+        "dily"
+      ],
+      "texFiles": [
+        836,
+        837
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "DelitaChapter23",
+      "category": "NPC",
+      "spriteNames": [
+        "dily2"
+      ],
+      "texFiles": [
+        838,
+        839
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "DelitaChapter4",
+      "category": "NPC",
+      "spriteNames": [
+        "dily3"
+      ],
+      "texFiles": [
+        840,
+        841
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
       "name": "Elmdore",
       "category": "NPC",
       "spriteNames": [

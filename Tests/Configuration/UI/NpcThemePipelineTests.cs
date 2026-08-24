@@ -142,6 +142,9 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         [InlineData("Zalmour", "zarumou")]
         [InlineData("Alma", "aruma")]
         [InlineData("Simon", "simon")]
+        [InlineData("DelitaChapter1", "dily")]
+        [InlineData("DelitaChapter23", "dily2")]
+        [InlineData("DelitaChapter4", "dily3")]
         // Story characters keep resolving the way they always did.
         [InlineData("Agrias", "aguri")]
         [InlineData("Rapha", "h79")]

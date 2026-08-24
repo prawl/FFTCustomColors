@@ -150,6 +150,9 @@ namespace FFTColorCustomizer.Configuration
             _storyCharacterThemes["Alma"] = "original";
             _storyCharacterThemes["Argath"] = "original";
             _storyCharacterThemes["Celia"] = "original";
+            _storyCharacterThemes["DelitaChapter1"] = "original";
+            _storyCharacterThemes["DelitaChapter23"] = "original";
+            _storyCharacterThemes["DelitaChapter4"] = "original";
             _storyCharacterThemes["Elmdore"] = "original";
             _storyCharacterThemes["Gaffgarion"] = "original";
             _storyCharacterThemes["Isilud"] = "original";
@@ -595,6 +598,27 @@ namespace FFTColorCustomizer.Configuration
         {
             get => GetStoryCharacterTheme("Celia");
             set => SetStoryCharacterTheme("Celia", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("DelitaChapter1")]
+        public string DelitaChapter1
+        {
+            get => GetStoryCharacterTheme("DelitaChapter1");
+            set => SetStoryCharacterTheme("DelitaChapter1", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("DelitaChapter23")]
+        public string DelitaChapter23
+        {
+            get => GetStoryCharacterTheme("DelitaChapter23");
+            set => SetStoryCharacterTheme("DelitaChapter23", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("DelitaChapter4")]
+        public string DelitaChapter4
+        {
+            get => GetStoryCharacterTheme("DelitaChapter4");
+            set => SetStoryCharacterTheme("DelitaChapter4", value);
         }
 
         [Newtonsoft.Json.JsonProperty("Elmdore")]

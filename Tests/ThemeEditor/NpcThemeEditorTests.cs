@@ -29,6 +29,15 @@ namespace Tests.ThemeEditor
   ]
 }";
             File.WriteAllText(Path.Combine(_tempMappingsDir, "NPC", "Alma.json"), almaMapping);
+
+            var delitaMapping = @"{
+  ""job"": ""DelitaChapter1"",
+  ""sprite"": ""battle_dily_spr.bin"",
+  ""sections"": [
+    { ""name"": ""Underarmor"", ""displayName"": ""Underarmor"", ""indices"": [4, 3], ""roles"": [""highlight"", ""base""] }
+  ]
+}";
+            File.WriteAllText(Path.Combine(_tempMappingsDir, "NPC", "DelitaChapter1.json"), delitaMapping);
         }
 
         public void Dispose()
@@ -69,6 +78,20 @@ namespace Tests.ThemeEditor
             var npcSeparatorIndex = items.IndexOf("── NPCs ──");
             var almaIndex = items.IndexOf("Alma");
             almaIndex.Should().BeGreaterThan(npcSeparatorIndex, "Alma belongs to the NPC group");
+        }
+
+        [Fact]
+        public void TemplateDropdown_Should_Show_Delita_Chapters_Like_Ramzas()
+        {
+            using var panel = new ThemeEditorPanel(_tempMappingsDir, null, null);
+
+            var dropdown = panel.Controls.Find("TemplateDropdown", true).OfType<ComboBox>().Single();
+            var items = dropdown.Items.Cast<object>().Select(i => i.ToString()).ToList();
+
+            // Raw registry names are internal keys, not labels; Ramza's chapter entries set
+            // the display convention ("Ramza (Chapter 1)") and Delita's must match it.
+            items.Should().Contain("Delita (Chapter 1)");
+            items.Should().NotContain("DelitaChapter1");
         }
     }
 }

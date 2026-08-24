@@ -1,0 +1,39 @@
+{
+  "job": "DelitaChapter1",
+  "sprites": [
+    "battle_dily_spr.bin"
+  ],
+  "sections": [
+    {
+      "name": "Underarmor",
+      "displayName": "Underarmor",
+      "indices": [4, 3],
+      "roles": ["highlight", "base"]
+    },
+    {
+      "name": "ArmsAndBelt",
+      "displayName": "Arms & Belt",
+      "indices": [6, 14],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "LegsAndBoots",
+      "displayName": "Legs & Boots",
+      "indices": [9, 8, 7],
+      "roles": ["highlight", "base", "shadow"]
+    },
+    {
+      "name": "HairShouldersGlovesKneepads",
+      "displayName": "Hair, Shoulders, Gloves & Kneepads",
+      "indices": [12, 13, 11, 10, 5],
+      "roles": ["highlight", "accent", "base", "shadow", "shadow"],
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15],
+      "roles": ["base"]
+    }
+  ]
+}

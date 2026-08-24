@@ -125,6 +125,9 @@ namespace FFTColorCustomizer.Core.ModComponents
                     storyManager.SetCurrentTheme("Alma", config.Alma);
                     storyManager.SetCurrentTheme("Argath", config.Argath);
                     storyManager.SetCurrentTheme("Celia", config.Celia);
+                    storyManager.SetCurrentTheme("DelitaChapter1", config.DelitaChapter1);
+                    storyManager.SetCurrentTheme("DelitaChapter23", config.DelitaChapter23);
+                    storyManager.SetCurrentTheme("DelitaChapter4", config.DelitaChapter4);
                     storyManager.SetCurrentTheme("Elmdore", config.Elmdore);
                     storyManager.SetCurrentTheme("Gaffgarion", config.Gaffgarion);
                     storyManager.SetCurrentTheme("Isilud", config.Isilud);

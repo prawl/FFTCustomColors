@@ -73,6 +73,27 @@ that checklist.
     StoryCharacters.json. Separately the baker and the contract test only handled a character's
     FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
     her three appearances.
+- **[CC-35] Add Delita to the NPC roster** (opened 2026-08-24) [BUILDING]
+  - Done means: Delita can be recoloured like any other NPC. He shows up in the NPCs section of
+    the config window as three entries, one per story look (chapter 1, chapters 2 and 3, chapter
+    4), each with a working preview picture and a theme editor entry whose sliders the owner has
+    calibrated from one-slider-per-index scaffolding into real gear sections. (Tech: his sprites
+    are dily, dily2 and dily3, not the guessed dirita names; dily already shipped in
+    sprites_original and the other two bins plus HD BMPs 836 to 841 were imported from the
+    owner's extracted game files, so no pac extraction was needed.)
+  - Verify: NpcRosterContractTests covers all three Delita entries (registry, config property,
+    mapping, preview) and the owner opens the config window, sees the three Delita rows with
+    correct previews, and confirms in the theme editor that each calibrated slider group
+    recolours the intended gear.
+  - Scaffolding landed 2026-08-24 on branch cc35-delita-npc: bins, preview BMPs, registry
+    entries, config wiring, display names, and per-index mappings, suite 1689 green. Waiting on
+    the owner's in-game index to gear calibration pass before the mappings become real sections.
+  - Chapter 1 finished 2026-08-24: the owner calibrated the sliders in game and the mapping now
+    has five real gear sections. One palette colour painted both his face and his arm trim, so
+    recolouring the arms used to tint his temple and jaw; those face pixels were moved onto the
+    skin colour at the pixel level in the battle texture and the preview sheet (910 pixels over
+    four passes, portrait untouched, owner verified on screen). Chapters 2 and 3 and 4 still
+    expose one slider per index and wait on the owner's calibration.
 
 ## Backlog
 
@@ -218,14 +239,6 @@ that checklist.
   SkinColor 0.39 to 0.13, Reis platinum Shirt 0.23 to 0.02. Decide separately whether to import
   the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
   grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
-
-- [CC-35] 2026-08-24: Delita is not customisable at all. Add him as a new NPC with themes of his
-  own. He likely appears as three different sprites across the story the way Ramza does, roughly
-  chapter 1, chapters 2 and 3, and chapter 4, so he may need to be three dropdown entries; which
-  sprite bins he actually uses is UNVERIFIED and is the first thing to check. (Tech: none of the 87
-  bins in sprites_original look like his; the classic names to hunt for are dirita, dirita2 and
-  dirita3, mirroring ramuza, ramuza2 and ramuza3. Extraction from the game pacs may be needed
-  before the CC-21 NPC pipeline can take him.)
 
 - [CC-32] 2026-08-21: Ramza's little figure that walks around the world map keeps his original
   colours when a theme is applied, so a themed Ramza looks right in battle and wrong on the map.

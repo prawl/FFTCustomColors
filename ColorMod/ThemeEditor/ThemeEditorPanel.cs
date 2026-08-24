@@ -200,10 +200,18 @@ namespace FFTColorCustomizer.ThemeEditor
                     _templateDropdown.Items.Add("── NPCs ──");
                     foreach (var npc in npcCharacters)
                     {
-                        _displayNameToJobName[npc] = npc;
-                        _isStoryCharacter[npc] = false;
-                        _isNpcCharacter[npc] = true;
-                        _templateDropdown.Items.Add(npc);
+                        // Chaptered NPCs display like the Ramza chapter entries above
+                        var displayName = npc switch
+                        {
+                            "DelitaChapter1" => "Delita (Chapter 1)",
+                            "DelitaChapter23" => "Delita (Chapter 2/3)",
+                            "DelitaChapter4" => "Delita (Chapter 4)",
+                            _ => npc
+                        };
+                        _displayNameToJobName[displayName] = npc;
+                        _isStoryCharacter[displayName] = false;
+                        _isNpcCharacter[displayName] = true;
+                        _templateDropdown.Items.Add(displayName);
                     }
                 }
 

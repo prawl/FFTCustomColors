@@ -1468,6 +1468,12 @@ namespace FFTColorCustomizer.Configuration.UI
                     return "Ramza (Chapter 2 & 3)";
                 case "RamzaChapter4":
                     return "Ramza (Chapter 4)";
+                case "DelitaChapter1":
+                    return "Delita (Chapter 1)";
+                case "DelitaChapter23":
+                    return "Delita (Chapter 2 & 3)";
+                case "DelitaChapter4":
+                    return "Delita (Chapter 4)";
                 default:
                     return characterName;
             }
