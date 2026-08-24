@@ -23,6 +23,9 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _originalSpritePreviewLabel;
         private RotatableSpritePictureBox _originalSpritePreview;
         private CheckBox _showOriginalCheckbox;
+        // "Animate" walk-cycle preview, see CC-36.
+        private CheckBox _animateCheckbox;
+        private WalkPreviewAnimator _walkAnimator;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
         private Button _saveButton;
@@ -381,6 +384,24 @@ namespace FFTColorCustomizer.ThemeEditor
             var compareTip = new ToolTip();
             compareTip.SetToolTip(_showOriginalCheckbox, "Show the original sprite next to your modified version for comparison");
 
+            // "Animate" plays the walk cycle for the current facing (CC-36). Disabled until
+            // a template with a derivable walk cycle (standard humanoid HD sheet) is selected.
+            _animateCheckbox = new CheckBox
+            {
+                Name = "AnimateCheckbox",
+                Text = "Animate",
+                Left = padding + 95,
+                Top = contentTop + previewHeight + 35,
+                Width = 80,
+                Height = 20,
+                ForeColor = Color.LightGray,
+                Cursor = Cursors.Hand,
+                Enabled = false
+            };
+            _animateCheckbox.CheckedChanged += OnAnimateCheckedChanged;
+            var animateTip = new ToolTip();
+            animateTip.SetToolTip(_animateCheckbox, "Play the walk animation for the current facing");
+
             // Color pickers panel - extends to bottom
             _sectionColorPickersPanel = new Panel
             {
@@ -405,10 +426,22 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_originalSpritePreview);
             Controls.Add(_originalSpritePreviewLabel);
             Controls.Add(_showOriginalCheckbox);
+            Controls.Add(_animateCheckbox);
             Controls.Add(_sectionColorPickersPanel);
 
             // Set initial sizes for dynamic panels
             UpdateColorPickersPanelSize();
+
+            // Owns the walk-cycle timer/phase/frame caches (CC-36). Must be constructed after
+            // both preview boxes exist (its paint callbacks target them) and before the default
+            // selection below, since OnTemplateSelected -> UpdateAnimateCheckboxForTemplate
+            // reaches into it.
+            _walkAnimator = new WalkPreviewAnimator(
+                () => PaletteModifier,
+                () => OriginalPaletteModifier,
+                () => CurrentSpriteDirection,
+                bmp => _spritePreview.Image = bmp,
+                bmp => _originalSpritePreview.Image = bmp);
 
             // Default to Squire (Male) if available (must be after all controls are initialized)
             var squireMaleIndex = _templateDropdown.Items.IndexOf("Squire (Male)");
@@ -561,6 +594,54 @@ namespace FFTColorCustomizer.ThemeEditor
                 // Generate color pickers for each section
                 GenerateSectionColorPickers();
             }
+
+            UpdateAnimateCheckboxForTemplate();
+        }
+
+        private void OnAnimateCheckedChanged(object? sender, EventArgs e)
+        {
+            if (_animateCheckbox.Checked && PaletteModifier?.SupportsWalkAnimation == true)
+            {
+                _walkAnimator.Start();
+            }
+            else
+            {
+                _walkAnimator.Stop();
+                UpdateSpritePreview();
+                UpdateOriginalSpritePreview();
+            }
+        }
+
+        /// <summary>
+        /// Enables/disables the Animate checkbox for whichever template is now selected, and
+        /// keeps the animator in sync with it. Called at the end of <see cref="OnTemplateSelected"/>,
+        /// once the modifiers and color pickers for the new selection are set up.
+        /// </summary>
+        private void UpdateAnimateCheckboxForTemplate()
+        {
+            // Guard matches the file's defensive style elsewhere (e.g. OnRotateLeft/Right's
+            // _showOriginalCheckbox != null check); construction order above makes this always
+            // non-null by the time OnTemplateSelected can run, but the guard is cheap insurance.
+            if (_animateCheckbox == null)
+                return;
+
+            var supported = PaletteModifier?.SupportsWalkAnimation == true;
+            if (!supported)
+            {
+                if (_animateCheckbox.Checked)
+                    _animateCheckbox.Checked = false; // fires OnAnimateCheckedChanged -> Stop + static repaint
+                _animateCheckbox.Enabled = false;
+            }
+            else
+            {
+                _animateCheckbox.Enabled = true;
+                if (_animateCheckbox.Checked)
+                {
+                    // Fresh character, fresh frames, phase 0.
+                    _walkAnimator.Stop();
+                    _walkAnimator.Start();
+                }
+            }
         }
 
         private void GenerateSectionColorPickers()
@@ -663,6 +744,10 @@ namespace FFTColorCustomizer.ThemeEditor
                 }
             }
 
+            // Live-edited colors invalidate the modified-pane frame cache so a slider drag
+            // animates with the new colors instead of the stale ones.
+            _walkAnimator?.InvalidateModifiedFrames();
+
             // Update the preview
             UpdateSpritePreview();
         }
@@ -693,12 +778,18 @@ namespace FFTColorCustomizer.ThemeEditor
                 PaletteModifier.CopyPaletteIndex(index, originalPalette);
             }
 
+            // See OnColorPickerChanged: reset also changes the live palette.
+            _walkAnimator?.InvalidateModifiedFrames();
+
             // Update the preview
             UpdateSpritePreview();
         }
 
         private void UpdateSpritePreview()
         {
+            if (_walkAnimator != null && _walkAnimator.RepaintIfRunning())
+                return;
+
             if (PaletteModifier == null || !PaletteModifier.IsLoaded)
                 return;
 
@@ -707,6 +798,12 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void UpdateOriginalSpritePreview()
         {
+            // While animating, the original pane is kept in step by the animator itself
+            // (RepaintIfRunning paints both panes); painting a static pose here would stomp it.
+            // The next tick (<=160ms) or the UpdateSpritePreview call above covers the repaint.
+            if (_walkAnimator != null && _walkAnimator.IsRunning)
+                return;
+
             if (OriginalPaletteModifier == null || !OriginalPaletteModifier.IsLoaded)
                 return;
 
@@ -725,6 +822,7 @@ namespace FFTColorCustomizer.ThemeEditor
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
             currentIndex = (currentIndex - 1 + DirectionsCycle.Length) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
+            _walkAnimator?.InvalidateFrames();
             UpdateSpritePreview();
             if (_showOriginalCheckbox != null && _showOriginalCheckbox.Checked)
                 UpdateOriginalSpritePreview();
@@ -736,6 +834,7 @@ namespace FFTColorCustomizer.ThemeEditor
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
             currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
+            _walkAnimator?.InvalidateFrames();
             UpdateSpritePreview();
             if (_showOriginalCheckbox != null && _showOriginalCheckbox.Checked)
                 UpdateOriginalSpritePreview();
@@ -773,6 +872,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
                 // Checkbox beneath the new bottom preview.
                 _showOriginalCheckbox.Top = originalTop + FullPreviewHeight + 5;
+                _animateCheckbox.Top = _showOriginalCheckbox.Top;
 
                 // Grow the panel so the checkbox + bottom preview aren't clipped.
                 var requiredHeight = _showOriginalCheckbox.Top + _showOriginalCheckbox.Height + checkboxBottomMargin;
@@ -790,6 +890,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 _spritePreviewLabel.Text = "Sprite Preview";
 
                 _showOriginalCheckbox.Top = contentTop + FullPreviewHeight + 35;
+                _animateCheckbox.Top = _showOriginalCheckbox.Top;
 
                 _originalSpritePreviewLabel.Visible = false;
                 _originalSpritePreview.Visible = false;
@@ -832,6 +933,10 @@ namespace FFTColorCustomizer.ThemeEditor
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question) == DialogResult.Yes;
 
+        /// <summary>Test seam: exposes the walk-cycle animator's state (phase, frame caches,
+        /// running flag) that isn't otherwise reachable from outside the panel. See CC-36.</summary>
+        internal WalkPreviewAnimator WalkAnimatorForTests => _walkAnimator;
+
         private void OnResetAllClick(object? sender, EventArgs e)
         {
             if (!ConfirmResetAll())
@@ -871,6 +976,7 @@ namespace FFTColorCustomizer.ThemeEditor
             // Compare baseline — keep this in sync with the load site above.
             OriginalPaletteModifier = LoadRankAwareModifier(spritePath);
 
+            _walkAnimator?.InvalidateFrames();
             UpdateSpritePreview();
             UpdateOriginalSpritePreview();
         }
@@ -949,6 +1055,13 @@ namespace FFTColorCustomizer.ThemeEditor
             }
 
             return Path.Combine(_spritesDirectory, "sprites_original", CurrentMapping.Sprite);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _walkAnimator?.Dispose();
+            base.Dispose(disposing);
         }
     }
 }

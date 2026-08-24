@@ -13,7 +13,6 @@ namespace FFTColorCustomizer.ThemeEditor
         private string _jobName;
         private string _modPath;
         private readonly BinSpriteExtractor _extractor = new BinSpriteExtractor();
-        private readonly SpriteSheetExtractor _sheetExtractor = new SpriteSheetExtractor();
         private readonly Dictionary<string, RelativeShadeGenerator> _shadeGenerators = new Dictionary<string, RelativeShadeGenerator>();
 
         public bool IsLoaded { get; private set; }
@@ -152,55 +151,55 @@ namespace FFTColorCustomizer.ThemeEditor
             if (string.IsNullOrEmpty(_modPath) || string.IsNullOrEmpty(_jobName))
                 return null;
 
-            // Section-mapping job names don't always match Images/ folder names.
-            // Ramza's section mappings use "RamzaCh1/RamzaCh23/RamzaCh4" but the HD
-            // BMP folders are named "RamzaChapter1/RamzaChapter23/RamzaChapter4".
-            var imagesFolderName = _jobName switch
-            {
-                "RamzaCh1" => "RamzaChapter1",
-                "RamzaCh23" => "RamzaChapter23",
-                "RamzaCh4" => "RamzaChapter4",
-                _ => _jobName
-            };
-
-            var bmpDir = Path.Combine(_modPath, "Images", imagesFolderName, "original");
-            if (!Directory.Exists(bmpDir))
-                return null;
-
-            // Most characters use the Sprite Toolkit's "<id>_<Name>_hd.bmp" naming, but
-            // Ramza ships pre-rendered "<id>_Ramuza_ChN.bmp" (no _hd suffix). Accept both.
-            string bmpPath = null;
-            foreach (var f in Directory.GetFiles(bmpDir, "*.bmp"))
-            {
-                if (bmpPath == null || string.CompareOrdinal(Path.GetFileName(f), Path.GetFileName(bmpPath)) < 0)
-                    bmpPath = f;
-            }
+            var imagesFolderName = HdSheetPreview.ResolveImagesFolderName(_jobName);
+            var bmpPath = HdSheetPreview.ResolveSheetPath(_modPath, imagesFolderName);
             if (bmpPath == null)
                 return null;
 
             // Apply the live palette. GetModifiedPalette() places the selected rank's 16
             // BGR555 colors at offset 0, which is what the swapper reads (CC-27).
-            using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, GetModifiedPalette()))
+            return HdSheetPreview.RenderPose(bmpPath, imagesFolderName, GetModifiedPalette(), directionIndex);
+        }
+
+        /// <summary>
+        /// True when the walk-cycle preview (see <see cref="GetWalkPreviewFrames"/>) can
+        /// actually render: the modifier is loaded, has a job/mod path to find an HD sheet
+        /// with, that sheet exists, and its <see cref="FrameLayout"/> is the standard humanoid
+        /// layout the walk cycle is derived from (see CC-36). Monsters, Chocobo and Construct 8
+        /// use non-standard layouts and always come back false here: deliberate V1 scope, not
+        /// a bug.
+        /// </summary>
+        public bool SupportsWalkAnimation
+        {
+            get
             {
-                // HD BMPs only carry 4 corner poses (NW/NE/SW/SE). Map cardinals to the
-                // nearest corner so the existing 8-direction rotation cycle still works,
-                // just snapping to corners every other step.
-                var cornerDir = directionIndex switch
-                {
-                    0 => Direction.NW, // N
-                    1 => Direction.NE, // NE
-                    2 => Direction.NE, // E
-                    3 => Direction.SE, // SE
-                    4 => Direction.SW, // S
-                    5 => Direction.SW, // SW
-                    6 => Direction.NW, // W
-                    7 => Direction.NW, // NW
-                    _ => Direction.SW
-                };
-                // Pass the per-character frame layout so non-standard sprites (Construct 8 = 96x96)
-                // extract from the right cells rather than the default 64x80 positions.
-                return _sheetExtractor.ExtractSprite(themedBmp, cornerDir, FrameLayout.For(imagesFolderName));
+                if (!IsLoaded || string.IsNullOrEmpty(_modPath) || string.IsNullOrEmpty(_jobName))
+                    return false;
+
+                var imagesFolderName = HdSheetPreview.ResolveImagesFolderName(_jobName);
+                if (HdSheetPreview.ResolveSheetPath(_modPath, imagesFolderName) == null)
+                    return false;
+
+                return FrameLayout.For(imagesFolderName).SupportsWalkCycle;
             }
+        }
+
+        /// <summary>
+        /// Renders the walk cycle for <paramref name="directionIndex"/> using the LIVE palette
+        /// (<see cref="GetModifiedPalette"/>): callers must re-fetch after any palette edit,
+        /// the returned frames are a snapshot, not a live view. Caller owns disposal of the
+        /// returned bitmaps. Returns null when <see cref="SupportsWalkAnimation"/> is false.
+        /// HD-BMP only: the bin-extraction fallback (used when no HD sheet is found) does not
+        /// animate.
+        /// </summary>
+        public List<Bitmap> GetWalkPreviewFrames(int directionIndex)
+        {
+            if (!SupportsWalkAnimation)
+                return null;
+
+            var imagesFolderName = HdSheetPreview.ResolveImagesFolderName(_jobName);
+            var bmpPath = HdSheetPreview.ResolveSheetPath(_modPath, imagesFolderName);
+            return HdSheetPreview.RenderWalkFrames(bmpPath, imagesFolderName, GetModifiedPalette(), directionIndex);
         }
 
         public void ApplySectionColor(JobSection section, Color baseColor)
