@@ -25,7 +25,20 @@ that checklist.
 
 ## Backlog
 
-- [CC-48] 2026-11-03: Pay the mod's 264 nullable warnings down to zero, so the shared warnings
+- [CC-48] 2026-11-02: Check that the theme files the mod writes come out byte for byte right, so
+  a change that breaks a palette fails the build instead of reaching a player. Add golden file
+  tests: patch a fixed theme into the committed charclut template and compare the result to a
+  committed golden copy, and do the same for one themed Ramza tex file. (Tech: NxdPatcher writes
+  CLUT data at 18 hard coded offsets and checks only the 4 byte NXDF magic; NxdPatcherTests checks
+  single offsets and round trips, not a whole patched file; the inputs are
+  ColorMod/Data/nxd/charclut.nxd and charclut.sqlite, and RamzaTexGenerator writes tex 830 to 835.
+  Add a test that the patcher refuses a template whose layout does not match too.)
+  - Done means: the patched charclut.nxd and one themed Ramza tex file are compared in full against
+    committed golden copies, and a template with the wrong layout is refused.
+  - Verify: changing one offset in NxdPatcher fails the golden test and the revert passes; suite
+    green.
+
+- [CC-49] 2026-11-03: Pay the mod's 264 nullable warnings down to zero, so the shared warnings
   as errors switch can turn on. Until then the health gate holds the count to
   docs/health/warnings.json, so it can only fall. (Tech: ModGatesWarningsAsErrors false in
   Directory.Build.targets; the bulk is CS8618 at 87, CS8603 at 84 and CS8625 at 31.)
