@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.Tests.Utilities
         /// When this list is empty, stage 6 deletes it and the contract turns fully strict.</summary>
         private static readonly HashSet<string> ShrinkingConsoleAllowList = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "ConfigurationForm.cs", "DebugResources.cs", "RamzaTexThemeService.cs",
+            "ConfigurationForm.cs", "DebugResources.cs",
         };
 
         // --- 1. LogVerb <-> docs/LOGGING.md lockstep ---

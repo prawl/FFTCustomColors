@@ -40,7 +40,7 @@ namespace FFTColorCustomizer.Services
 
         public void ApplyInitialThemes()
         {
-            ModLogger.LogDebug("ThemeManagerAdapter.ApplyInitialThemes() called");
+            ModLogger.LogDebug(LogVerb.Theme, "ThemeManagerAdapter.ApplyInitialThemes() called");
             ApplyInitialRamzaTheme();
             ApplyInitialOrlandeauTheme();
             ApplyInitialAgriasTheme();
@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Ramza");
             _storyCharacterManager.SetCurrentTheme("Ramza", nextTheme);
-            ModLogger.Log($"Ramza theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Ramza theme: {nextTheme}");
             ApplyRamzaTheme(nextTheme);
         }
 
@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Orlandeau");
             _storyCharacterManager.SetCurrentTheme("Orlandeau", nextTheme);
-            ModLogger.Log($"Orlandeau theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Orlandeau theme: {nextTheme}");
             ApplyOrlandeauTheme(nextTheme);
         }
 
@@ -73,9 +73,9 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Agrias");
             _storyCharacterManager.SetCurrentTheme("Agrias", nextTheme);
-            ModLogger.Log($"================================================");
-            ModLogger.Log($"    AGRIAS THEME CHANGED TO: {nextTheme}");
-            ModLogger.Log($"================================================");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
+            ModLogger.Log(LogVerb.Theme, $"Agrias theme changed to {nextTheme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
             ApplyAgriasTheme(nextTheme);
         }
 
@@ -83,7 +83,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Cloud");
             _storyCharacterManager.SetCurrentTheme("Cloud", nextTheme);
-            ModLogger.Log($"Cloud theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Cloud theme: {nextTheme}");
             ApplyCloudTheme(nextTheme);
         }
 
@@ -91,7 +91,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Mustadio");
             _storyCharacterManager.SetCurrentTheme("Mustadio", nextTheme);
-            ModLogger.Log($"Mustadio theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Mustadio theme: {nextTheme}");
             ApplyMustadioTheme(nextTheme);
         }
 
@@ -99,7 +99,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Marach");
             _storyCharacterManager.SetCurrentTheme("Marach", nextTheme);
-            ModLogger.Log($"Marach theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Marach theme: {nextTheme}");
             ApplyMarachTheme(nextTheme);
         }
 
@@ -107,7 +107,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Beowulf");
             _storyCharacterManager.SetCurrentTheme("Beowulf", nextTheme);
-            ModLogger.Log($"Beowulf theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Beowulf theme: {nextTheme}");
             ApplyBeowulfTheme(nextTheme);
         }
 
@@ -115,7 +115,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Meliadoul");
             _storyCharacterManager.SetCurrentTheme("Meliadoul", nextTheme);
-            ModLogger.Log($"Meliadoul theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Meliadoul theme: {nextTheme}");
             ApplyMeliadoulTheme(nextTheme);
         }
 
@@ -123,7 +123,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Rapha");
             _storyCharacterManager.SetCurrentTheme("Rapha", nextTheme);
-            ModLogger.Log($"Rapha theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Rapha theme: {nextTheme}");
             ApplyRaphaTheme(nextTheme);
         }
 
@@ -131,7 +131,7 @@ namespace FFTColorCustomizer.Services
         {
             var nextTheme = _themeService.CycleTheme("Reis");
             _storyCharacterManager.SetCurrentTheme("Reis", nextTheme);
-            ModLogger.Log($"Reis theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Reis theme: {nextTheme}");
             ApplyReisTheme(nextTheme);
         }
 
@@ -155,70 +155,70 @@ namespace FFTColorCustomizer.Services
                 }
             }
 
-            ModLogger.LogDebug($"ApplyInitialRamzaTheme - theme from config: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialRamzaTheme - theme from config: {theme}");
             ApplyRamzaTheme(theme);
         }
 
         private void ApplyInitialOrlandeauTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
-            ModLogger.LogDebug($"ApplyInitialOrlandeauTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialOrlandeauTheme - theme: {theme}");
             ApplyOrlandeauTheme(theme);
         }
 
         private void ApplyInitialAgriasTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Agrias");
-            ModLogger.LogDebug($"ApplyInitialAgriasTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialAgriasTheme - theme: {theme}");
             ApplyAgriasTheme(theme);
         }
 
         private void ApplyInitialCloudTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Cloud");
-            ModLogger.LogDebug($"ApplyInitialCloudTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialCloudTheme - theme: {theme}");
             ApplyCloudTheme(theme);
         }
 
         private void ApplyInitialMustadioTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Mustadio");
-            ModLogger.LogDebug($"ApplyInitialMustadioTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialMustadioTheme - theme: {theme}");
             ApplyMustadioTheme(theme);
         }
 
         private void ApplyInitialMarachTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Marach");
-            ModLogger.LogDebug($"ApplyInitialMarachTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialMarachTheme - theme: {theme}");
             ApplyMarachTheme(theme);
         }
 
         private void ApplyInitialBeowulfTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Beowulf");
-            ModLogger.LogDebug($"ApplyInitialBeowulfTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialBeowulfTheme - theme: {theme}");
             ApplyBeowulfTheme(theme);
         }
 
         private void ApplyInitialMeliadoulTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Meliadoul");
-            ModLogger.LogDebug($"ApplyInitialMeliadoulTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialMeliadoulTheme - theme: {theme}");
             ApplyMeliadoulTheme(theme);
         }
 
         private void ApplyInitialRaphaTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Rapha");
-            ModLogger.LogDebug($"ApplyInitialRaphaTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialRaphaTheme - theme: {theme}");
             ApplyRaphaTheme(theme);
         }
 
         private void ApplyInitialReisTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Reis");
-            ModLogger.LogDebug($"ApplyInitialReisTheme - theme: {theme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"ApplyInitialReisTheme - theme: {theme}");
             ApplyReisTheme(theme);
         }
 
@@ -235,7 +235,7 @@ namespace FFTColorCustomizer.Services
             var ch23Theme = config?.RamzaChapter23 ?? "original";
             var ch4Theme = config?.RamzaChapter4 ?? "original";
 
-            ModLogger.LogDebug($"Applying Ramza themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+            ModLogger.LogDebug(LogVerb.Ramza, $"Applying Ramza themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
             // Tex files are ONLY used for built-in themes (dark_knight, white_heretic, crimson_blade)
             // User themes and "original" use NXD palettes only, tex files would interfere
@@ -256,13 +256,13 @@ namespace FFTColorCustomizer.Services
                 var ch23TexTheme = builtInPalettes.IsBuiltInTheme(ch23Theme) ? ch23Theme : "original";
                 var ch4TexTheme = builtInPalettes.IsBuiltInTheme(ch4Theme) ? ch4Theme : "original";
 
-                ModLogger.LogDebug($"Tex themes (built-in only): Ch1={ch1TexTheme}, Ch23={ch23TexTheme}, Ch4={ch4TexTheme}");
+                ModLogger.LogDebug(LogVerb.Ramza, $"Tex themes (built-in only): Ch1={ch1TexTheme}, Ch23={ch23TexTheme}, Ch4={ch4TexTheme}");
                 texSwapper.SwapTexFilesPerChapter(ch1TexTheme, ch23TexTheme, ch4TexTheme);
             }
             else
             {
                 // No built-in themes, remove all tex files to let NXD palettes take effect
-                ModLogger.LogDebug("No built-in themes, removing all Ramza tex files");
+                ModLogger.LogDebug(LogVerb.Ramza, "No built-in themes, removing all Ramza tex files");
                 texSwapper.RestoreOriginalTexFiles();
             }
 
@@ -285,7 +285,7 @@ namespace FFTColorCustomizer.Services
                 // User themes already have their palette applied when saved via SaveRamzaTheme
                 if (!builtInPalettes.IsBuiltInTheme(theme) && theme != "original")
                 {
-                    ModLogger.LogDebug($"Skipping NXD update for user theme: {theme}");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Skipping NXD update for user theme: {theme}");
                     return;
                 }
 
@@ -299,7 +299,7 @@ namespace FFTColorCustomizer.Services
                 var ch23Theme = config?.RamzaChapter23 ?? "original";
                 var ch4Theme = config?.RamzaChapter4 ?? "original";
 
-                ModLogger.LogDebug($"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+                ModLogger.LogDebug(LogVerb.Ramza, $"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
                 // Get palettes for each chapter based on its configured theme
                 var (chapter1Palette, chapter23Palette, chapter4Palette) =
@@ -314,16 +314,16 @@ namespace FFTColorCustomizer.Services
 
                 if (success)
                 {
-                    ModLogger.Log($"Successfully updated charclut.nxd with per-chapter themes");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Successfully updated charclut.nxd with per-chapter themes");
                 }
                 else
                 {
-                    ModLogger.LogWarning($"Failed to update charclut.nxd");
+                    ModLogger.LogWarning(LogVerb.Ramza, $"Failed to update charclut.nxd");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"Error applying theme to NXD: {ex.Message}");
+                ModLogger.LogError(LogVerb.Ramza, $"Error applying theme to NXD: {ex.Message}");
             }
         }
 
@@ -418,7 +418,7 @@ namespace FFTColorCustomizer.Services
                     var destPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", spriteName);
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath));
                     File.Copy(sourcePath, destPath, true);
-                    ModLogger.Log($"Copied {character} sprite from {sourcePath} to {destPath}");
+                    ModLogger.LogDebug(LogVerb.Sprite, $"Copied {character} sprite from {sourcePath} to {destPath}");
                 }
             }
         }
@@ -488,13 +488,13 @@ namespace FFTColorCustomizer.Services
 
                 if (File.Exists(userConfigPath))
                 {
-                    ModLogger.LogDebug($"Loading config from User directory: {userConfigPath}");
+                    ModLogger.LogDebug(LogVerb.Config, $"Loading config from User directory: {userConfigPath}");
                     return userConfigPath;
                 }
 
                 // Fall back to mod directory
                 var modConfigPath = Path.Combine(_modPath, "Config.json");
-                ModLogger.LogDebug($"Loading config from mod directory: {modConfigPath}");
+                ModLogger.LogDebug(LogVerb.Config, $"Loading config from mod directory: {modConfigPath}");
                 return modConfigPath;
             }
 

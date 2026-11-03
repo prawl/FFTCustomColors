@@ -33,25 +33,25 @@ namespace FFTColorCustomizer.Services
         public void CycleOrlandeauTheme()
         {
             var nextTheme = _storyCharacterManager.CycleTheme("Orlandeau");
-            ModLogger.Log($"Orlandeau theme: {nextTheme}");
+            ModLogger.Log(LogVerb.Theme, $"Orlandeau theme: {nextTheme}");
             ApplyOrlandeauTheme(nextTheme);
         }
 
         public void CycleAgriasTheme()
         {
             var nextTheme = _storyCharacterManager.CycleTheme("Agrias");
-            ModLogger.Log($"================================================");
-            ModLogger.Log($"    AGRIAS THEME CHANGED TO: {nextTheme}");
-            ModLogger.Log($"================================================");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
+            ModLogger.Log(LogVerb.Theme, $"Agrias theme changed to {nextTheme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
             ApplyAgriasTheme(nextTheme);
         }
 
         public void CycleCloudTheme()
         {
             var nextTheme = _storyCharacterManager.CycleTheme("Cloud");
-            ModLogger.Log($"================================================");
-            ModLogger.Log($"    CLOUD THEME CHANGED TO: {nextTheme}");
-            ModLogger.Log($"================================================");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
+            ModLogger.Log(LogVerb.Theme, $"Cloud theme changed to {nextTheme}");
+            ModLogger.LogDebug(LogVerb.Theme, $"================================================");
             ApplyCloudTheme(nextTheme);
         }
 
@@ -60,12 +60,12 @@ namespace FFTColorCustomizer.Services
             try
             {
                 var currentTheme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
-                ModLogger.Log($"Applying initial Orlandeau theme: {currentTheme}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Orlandeau theme: {currentTheme}");
                 ApplyOrlandeauTheme(currentTheme);
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"applying initial Orlandeau theme: {ex.Message}");
+                ModLogger.LogError(LogVerb.Theme, $"Applying the initial Orlandeau theme failed: {ex.Message}");
             }
         }
 
@@ -75,7 +75,7 @@ namespace FFTColorCustomizer.Services
             var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, "battle_oru_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
 
-            ModLogger.LogDebug($"Looking for Orlandeau sprite at: {sourceFile}");
+            ModLogger.LogDebug(LogVerb.Theme, $"Looking for Orlandeau sprite at: {sourceFile}");
             if (File.Exists(sourceFile))
             {
                 // Ensure destination directory exists
@@ -85,7 +85,7 @@ namespace FFTColorCustomizer.Services
                     Directory.CreateDirectory(destDir);
                 }
                 File.Copy(sourceFile, destFile, true);
-                ModLogger.LogSuccess($"Successfully copied Orlandeau theme: {theme}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Successfully copied Orlandeau theme: {theme}");
 
                 // Also copy the other Orlandeau variants
                 string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
@@ -102,13 +102,13 @@ namespace FFTColorCustomizer.Services
                             Directory.CreateDirectory(variantDestDir);
                         }
                         File.Copy(variantSource, variantDest, true);
-                        ModLogger.Log($"Applied theme to {variant}");
+                        ModLogger.LogDebug(LogVerb.Theme, $"Applied theme to {variant}");
                     }
                 }
             }
             else
             {
-                ModLogger.LogWarning($"Orlandeau theme file not found at: {sourceFile}");
+                ModLogger.LogWarning(LogVerb.Theme, $"Orlandeau theme file not found at: {sourceFile}");
             }
         }
 
@@ -117,12 +117,12 @@ namespace FFTColorCustomizer.Services
             try
             {
                 var currentTheme = _storyCharacterManager.GetCurrentTheme("Agrias");
-                ModLogger.Log($"Applying initial Agrias theme: {currentTheme}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Agrias theme: {currentTheme}");
                 ApplyAgriasTheme(currentTheme);
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"applying initial Agrias theme: {ex.Message}");
+                ModLogger.LogError(LogVerb.Theme, $"Applying the initial Agrias theme failed: {ex.Message}");
             }
         }
 
@@ -136,7 +136,7 @@ namespace FFTColorCustomizer.Services
                 var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, sprite);
                 var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
 
-                ModLogger.LogDebug($"Looking for Agrias sprite at: {sourceFile}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Looking for Agrias sprite at: {sourceFile}");
                 if (File.Exists(sourceFile))
                 {
                     // Ensure destination directory exists
@@ -146,11 +146,11 @@ namespace FFTColorCustomizer.Services
                         Directory.CreateDirectory(destDir);
                     }
                     File.Copy(sourceFile, destFile, true);
-                    ModLogger.LogSuccess($"Successfully copied Agrias theme for {sprite}: {theme}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Successfully copied Agrias theme for {sprite}: {theme}");
                 }
                 else
                 {
-                    ModLogger.LogWarning($"Agrias theme file not found at: {sourceFile}");
+                    ModLogger.LogWarning(LogVerb.Theme, $"Agrias theme file not found at: {sourceFile}");
                 }
             }
         }
@@ -160,12 +160,12 @@ namespace FFTColorCustomizer.Services
             try
             {
                 var currentTheme = _storyCharacterManager.GetCurrentTheme("Cloud");
-                ModLogger.Log($"Applying initial Cloud theme: {currentTheme}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Cloud theme: {currentTheme}");
                 ApplyCloudTheme(currentTheme);
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"applying initial Cloud theme: {ex.Message}");
+                ModLogger.LogError(LogVerb.Theme, $"Applying the initial Cloud theme failed: {ex.Message}");
             }
         }
 
@@ -175,7 +175,7 @@ namespace FFTColorCustomizer.Services
             var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, "battle_cloud_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_cloud_spr.bin");
 
-            ModLogger.LogDebug($"Looking for Cloud sprite at: {sourceFile}");
+            ModLogger.LogDebug(LogVerb.Theme, $"Looking for Cloud sprite at: {sourceFile}");
             if (File.Exists(sourceFile))
             {
                 // Ensure destination directory exists
@@ -185,11 +185,11 @@ namespace FFTColorCustomizer.Services
                     Directory.CreateDirectory(destDir);
                 }
                 File.Copy(sourceFile, destFile, true);
-                ModLogger.LogSuccess($"Successfully copied Cloud theme: {theme}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Successfully copied Cloud theme: {theme}");
             }
             else
             {
-                ModLogger.LogWarning($"Cloud theme file not found at: {sourceFile}");
+                ModLogger.LogWarning(LogVerb.Theme, $"Cloud theme file not found at: {sourceFile}");
             }
         }
 

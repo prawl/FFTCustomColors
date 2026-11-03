@@ -24,7 +24,7 @@ namespace FFTColorCustomizer.Services
         {
             _modRootPath = modRootPath;
             _gameTexPath = gameTexPath;
-            ModLogger.LogDebug($"RamzaTexSwapper initialized - ModRoot: {_modRootPath}, Game: {_gameTexPath}");
+            ModLogger.LogDebug(LogVerb.Ramza, $"RamzaTexSwapper initialized - ModRoot: {_modRootPath}, Game: {_gameTexPath}");
         }
 
         /// <summary>
@@ -56,11 +56,11 @@ namespace FFTColorCustomizer.Services
             // Ensure g2d directory exists
             if (!Directory.Exists(_gameTexPath))
             {
-                ModLogger.LogDebug($"Creating g2d directory: {_gameTexPath}");
+                ModLogger.LogDebug(LogVerb.Ramza, $"Creating g2d directory: {_gameTexPath}");
                 Directory.CreateDirectory(_gameTexPath);
             }
 
-            ModLogger.Log($"Applying per-chapter tex themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+            ModLogger.LogDebug(LogVerb.Ramza, $"Applying per-chapter tex themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
             // Apply each chapter's theme separately
             int totalCopied = 0;
@@ -68,7 +68,7 @@ namespace FFTColorCustomizer.Services
             totalCopied += SwapTexFilesForChapter(2, ch23Theme);
             totalCopied += SwapTexFilesForChapter(4, ch4Theme);
 
-            ModLogger.Log($"Activated per-chapter themes with {totalCopied} tex files (restart required)");
+            ModLogger.Log(LogVerb.Ramza, $"Activated per-chapter themes with {totalCopied} tex files (restart required)");
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace FFTColorCustomizer.Services
             var texNumbers = GetTexNumbersForChapter(chapter);
             if (texNumbers.Length == 0)
             {
-                ModLogger.LogWarning($"Invalid chapter number: {chapter}");
+                ModLogger.LogWarning(LogVerb.Ramza, $"Invalid chapter number: {chapter}");
                 return 0;
             }
 
@@ -95,7 +95,7 @@ namespace FFTColorCustomizer.Services
                     if (File.Exists(texFile))
                     {
                         File.Delete(texFile);
-                        ModLogger.LogDebug($"Removed tex_{texNumber}.bin for original theme");
+                        ModLogger.LogDebug(LogVerb.Ramza, $"Removed tex_{texNumber}.bin for original theme");
                     }
                 }
                 return 0;
@@ -106,7 +106,7 @@ namespace FFTColorCustomizer.Services
 
             if (!Directory.Exists(themeSourceDir))
             {
-                ModLogger.LogWarning($"Theme directory does not exist: {themeSourceDir}");
+                ModLogger.LogWarning(LogVerb.Ramza, $"Theme directory does not exist: {themeSourceDir}");
                 return 0;
             }
 
@@ -119,12 +119,12 @@ namespace FFTColorCustomizer.Services
                 if (File.Exists(sourceFile))
                 {
                     File.Copy(sourceFile, destFile, overwrite: true);
-                    ModLogger.LogDebug($"Copied tex_{texNumber}.bin from {themeName} for chapter {chapter}");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Copied tex_{texNumber}.bin from {themeName} for chapter {chapter}");
                     copiedCount++;
                 }
                 else
                 {
-                    ModLogger.LogWarning($"Source file not found: {sourceFile}");
+                    ModLogger.LogWarning(LogVerb.Ramza, $"Source file not found: {sourceFile}");
                 }
             }
 
@@ -143,18 +143,18 @@ namespace FFTColorCustomizer.Services
             // Theme files are stored in RamzaThemes folder at mod root
             string themeSourceDir = Path.Combine(_modRootPath, "RamzaThemes", themeName);
 
-            ModLogger.LogDebug($"Activating theme '{themeName}' from {themeSourceDir}");
+            ModLogger.LogDebug(LogVerb.Ramza, $"Activating theme '{themeName}' from {themeSourceDir}");
 
             if (!Directory.Exists(themeSourceDir))
             {
-                ModLogger.LogError($"Theme directory does not exist: {themeSourceDir}");
+                ModLogger.LogError(LogVerb.Ramza, $"Theme directory does not exist: {themeSourceDir}");
                 return;
             }
 
             // Ensure g2d directory exists (it might not in production builds)
             if (!Directory.Exists(_gameTexPath))
             {
-                ModLogger.LogDebug($"Creating g2d directory: {_gameTexPath}");
+                ModLogger.LogDebug(LogVerb.Ramza, $"Creating g2d directory: {_gameTexPath}");
                 Directory.CreateDirectory(_gameTexPath);
             }
 
@@ -168,15 +168,15 @@ namespace FFTColorCustomizer.Services
                 if (File.Exists(sourceFile))
                 {
                     File.Copy(sourceFile, destFile, overwrite: true);
-                    ModLogger.LogDebug($"Copied tex_{texNumber}.bin to g2d directory");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Copied tex_{texNumber}.bin to g2d directory");
                     copiedCount++;
                 }
                 else
                 {
-                    ModLogger.LogWarning($"Source file not found: {sourceFile}");
+                    ModLogger.LogWarning(LogVerb.Ramza, $"Source file not found: {sourceFile}");
                 }
             }
-            ModLogger.Log($"Activated {themeName} theme with {copiedCount} tex files (restart required)");
+            ModLogger.Log(LogVerb.Ramza, $"Activated {themeName} theme with {copiedCount} tex files (restart required)");
         }
 
         private void RemoveMainDirectoryTexFiles()
@@ -187,7 +187,7 @@ namespace FFTColorCustomizer.Services
                 if (File.Exists(texFile))
                 {
                     File.Delete(texFile);
-                    ModLogger.LogDebug($"Removed tex_{texNumber}.bin from main directory");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Removed tex_{texNumber}.bin from main directory");
                 }
             }
         }
@@ -204,7 +204,7 @@ namespace FFTColorCustomizer.Services
                 if (Directory.Exists(themeDir))
                 {
                     Directory.Delete(themeDir, true);
-                    ModLogger.LogDebug($"Removed {dirName} directory");
+                    ModLogger.LogDebug(LogVerb.Ramza, $"Removed {dirName} directory");
                 }
             }
         }
@@ -212,7 +212,7 @@ namespace FFTColorCustomizer.Services
         public void RestoreOriginalTexFiles()
         {
             // For original theme, remove all tex files to let game use built-in textures
-            ModLogger.LogDebug($"Restoring original textures by removing all mod tex files");
+            ModLogger.LogDebug(LogVerb.Ramza, $"Restoring original textures by removing all mod tex files");
 
             // Remove files from main directory
             RemoveMainDirectoryTexFiles();
@@ -220,7 +220,7 @@ namespace FFTColorCustomizer.Services
             // Remove ALL theme directories that might contain Ramza tex files
             RemoveAllThemeDirectories();
 
-            ModLogger.Log($"Restored original textures - using game's built-in files (restart required)");
+            ModLogger.Log(LogVerb.Ramza, $"Restored original textures - using game's built-in files (restart required)");
         }
     }
 }

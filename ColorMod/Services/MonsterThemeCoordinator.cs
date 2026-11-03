@@ -36,7 +36,7 @@ namespace FFTColorCustomizer.Services
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError($"[MONSTER] {family.Family} apply failed: {ex.Message}");
+                    ModLogger.LogError(LogVerb.Monster, $"{family.Family} apply failed: {ex.Message}");
                 }
             }
         }
@@ -46,14 +46,14 @@ namespace FFTColorCustomizer.Services
             var originalFile = Path.Combine(_unitPath, "sprites_original", family.Bin);
             if (!File.Exists(originalFile))
             {
-                ModLogger.LogWarning($"[MONSTER] {family.Family}: original sprite not found, skipping: {originalFile}");
+                ModLogger.LogWarning(LogVerb.Monster, $"{family.Family}: original sprite not found, skipping: {originalFile}");
                 return;
             }
 
             var mapping = LoadMapping(family.Family);
             if (mapping == null)
             {
-                ModLogger.LogWarning($"[MONSTER] {family.Family}: section mapping not found, skipping recolor");
+                ModLogger.LogWarning(LogVerb.Monster, $"{family.Family}: section mapping not found, skipping recolor");
                 return;
             }
 
@@ -69,11 +69,11 @@ namespace FFTColorCustomizer.Services
                 if (MonsterRecolor.ApplyTheme(data, paletteIndex, mapping.Sections, tierKey, themeName, userThemes))
                 {
                     anyThemed = true;
-                    ModLogger.Log($"[MONSTER] {tierKey} -> {themeName} (palette {paletteIndex})");
+                    ModLogger.LogDebug(LogVerb.Monster, $"{tierKey} -> {themeName} (palette {paletteIndex})");
                 }
                 else if (!string.IsNullOrEmpty(themeName) && themeName != MonsterThemeRegistry.Original)
                 {
-                    ModLogger.LogWarning($"[MONSTER] Unknown theme {tierKey} = {themeName}");
+                    ModLogger.LogWarning(LogVerb.Monster, $"Unknown theme {tierKey} = {themeName}");
                 }
             }
 
@@ -81,7 +81,7 @@ namespace FFTColorCustomizer.Services
             // restores its palette on the next apply.
             var destFile = Path.Combine(_unitPath, family.Bin);
             File.WriteAllBytes(destFile, data);
-            ModLogger.LogSuccess($"[MONSTER] {family.Family}: wrote {destFile} (themed: {anyThemed})");
+            ModLogger.LogDebug(LogVerb.Monster, $"{family.Family}: wrote {destFile} (themed: {anyThemed})");
         }
 
         private SectionMapping LoadMapping(string family)

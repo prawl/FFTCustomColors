@@ -51,21 +51,21 @@ namespace FFTColorCustomizer.Services
                         int changes = _texModifier.ModifyTexColors(inputFile, outputFile, themeName);
                         totalChanges += changes;
                         successCount++;
-                        Console.WriteLine($"Applied {themeName} to tex_{texNumber}.bin ({changes} color changes)");
+                        ModLogger.LogDebug(LogVerb.Ramza, $"Applied {themeName} to tex_{texNumber}.bin ({changes} color changes)");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Failed to process tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.LogError(LogVerb.Ramza, $"Failed to process tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Warning: tex_{texNumber}.bin not found in backup directory");
+                    ModLogger.LogWarning(LogVerb.Ramza, $"The backup of tex_{texNumber}.bin was not found");
                 }
             }
 
-            Console.WriteLine($"Theme {themeName} applied to {successCount}/{_ramzaTexNumbers.Length} Ramza tex files");
-            Console.WriteLine($"Total color modifications: {totalChanges}");
+            ModLogger.Log(LogVerb.Ramza, $"Theme {themeName} applied to {successCount}/{_ramzaTexNumbers.Length} Ramza tex files");
+            ModLogger.LogDebug(LogVerb.Ramza, $"Total color modifications: {totalChanges}");
         }
 
         /// <summary>
@@ -94,16 +94,16 @@ namespace FFTColorCustomizer.Services
                     {
                         File.Copy(sourceFile, destFile, overwrite: true);
                         restoredCount++;
-                        Console.WriteLine($"Restored original tex_{texNumber}.bin");
+                        ModLogger.LogDebug(LogVerb.Ramza, $"Restored original tex_{texNumber}.bin");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Failed to restore tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.LogError(LogVerb.Ramza, $"Failed to restore tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
             }
 
-            Console.WriteLine($"Restored {restoredCount}/{_ramzaTexNumbers.Length} original Ramza tex files");
+            ModLogger.Log(LogVerb.Ramza, $"Restored {restoredCount}/{_ramzaTexNumbers.Length} original Ramza tex files");
         }
 
         /// <summary>
@@ -148,18 +148,18 @@ namespace FFTColorCustomizer.Services
                     {
                         File.Copy(sourceFile, backupFile);
                         backedUpCount++;
-                        Console.WriteLine($"Backed up tex_{texNumber}.bin");
+                        ModLogger.LogDebug(LogVerb.Ramza, $"Backed up tex_{texNumber}.bin");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Failed to backup tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.LogError(LogVerb.Ramza, $"Failed to backup tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
             }
 
             if (backedUpCount > 0)
             {
-                Console.WriteLine($"Created backup of {backedUpCount} tex files");
+                ModLogger.LogDebug(LogVerb.Ramza, $"Created backup of {backedUpCount} tex files");
             }
         }
     }

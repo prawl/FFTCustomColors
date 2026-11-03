@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.Utilities
             // isDevMode parameter kept for backward compatibility but ignored
             if (isDevMode.HasValue)
             {
-                ModLogger.Log("DynamicSpriteLoader: Dev mode parameter is deprecated and ignored");
+                ModLogger.LogDebug(LogVerb.Sprite, "Dev mode parameter is deprecated and ignored");
             }
         }
 
@@ -40,12 +40,12 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         public void PrepareSpritesForConfig()
         {
-            ModLogger.Log("[DynamicSpriteLoader] PrepareSpritesForConfig called");
+            ModLogger.LogDebug(LogVerb.Sprite, "PrepareSpritesForConfig called");
 
             // All themes already exist in the data directory
-            ModLogger.Log("[DynamicSpriteLoader] All themes available in data directory");
+            ModLogger.LogDebug(LogVerb.Sprite, "All themes available in data directory");
             var requiredSchemes = GetRequiredSchemes();
-            ModLogger.Log($"DynamicSpriteLoader: Required schemes for current config: {string.Join(", ", requiredSchemes)}");
+            ModLogger.LogDebug(LogVerb.Sprite, $"Required schemes for current config: {string.Join(", ", requiredSchemes)}");
 
             // Verify required schemes exist
             VerifyRequiredSchemes(requiredSchemes);
@@ -96,11 +96,11 @@ namespace FFTColorCustomizer.Utilities
 
                 if (Directory.Exists(schemeDir))
                 {
-                    ModLogger.Log($"DynamicSpriteLoader: Verified sprites_{scheme} exists in data directory");
+                    ModLogger.LogDebug(LogVerb.Sprite, $"Verified sprites_{scheme} exists in data directory");
                 }
                 else
                 {
-                    ModLogger.Log($"DynamicSpriteLoader: Warning: sprites_{scheme} not found in data directory");
+                    ModLogger.LogWarning(LogVerb.Sprite, $"The theme folder sprites_{scheme} was not found in the data directory");
                 }
             }
         }
@@ -145,7 +145,7 @@ namespace FFTColorCustomizer.Utilities
                 // Always preserve test themes
                 if (dirName.StartsWith("sprites_test_"))
                 {
-                    ModLogger.Log($"DynamicSpriteLoader: Preserving test theme: {dirName}");
+                    ModLogger.LogDebug(LogVerb.Sprite, $"Preserving test theme: {dirName}");
                     continue;
                 }
 
@@ -161,7 +161,7 @@ namespace FFTColorCustomizer.Utilities
                 {
                     if (dirName.StartsWith($"sprites_{character}_"))
                     {
-                        ModLogger.Log($"DynamicSpriteLoader: Preserving {character} theme: {dirName}");
+                        ModLogger.LogDebug(LogVerb.Sprite, $"Preserving {character} theme: {dirName}");
                         isStoryCharacterTheme = true;
                         break;
                     }
@@ -181,11 +181,11 @@ namespace FFTColorCustomizer.Utilities
                     try
                     {
                         Directory.Delete(dir, true);
-                        ModLogger.Log($"DynamicSpriteLoader: Removed unused theme: {dirName}");
+                        ModLogger.LogDebug(LogVerb.Sprite, $"Removed unused theme: {dirName}");
                     }
                     catch (Exception ex)
                     {
-                        ModLogger.Log($"DynamicSpriteLoader: Failed to remove {dirName}: {ex.Message}");
+                        ModLogger.LogWarning(LogVerb.Sprite, $"Failed to remove {dirName}: {ex.Message}");
                     }
                 }
             }

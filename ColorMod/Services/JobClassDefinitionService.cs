@@ -62,11 +62,11 @@ namespace FFTColorCustomizer.Services
             try
             {
                 var jsonPath = Path.Combine(_dataPath, fileName);
-                ModLogger.LogDebug($"Looking for {fileName} at: {jsonPath}");
+                ModLogger.LogDebug(LogVerb.Theme, $"Looking for {fileName} at: {jsonPath}");
 
                 if (!File.Exists(jsonPath))
                 {
-                    ModLogger.LogDebug($"{fileName} not found at: {jsonPath}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"{fileName} not found at: {jsonPath}");
                     return;
                 }
 
@@ -87,7 +87,7 @@ namespace FFTColorCustomizer.Services
                             targetThemeList.Add(themeName);
                         }
                     }
-                    ModLogger.Log($"Loaded {targetThemeList.Count} shared themes from {fileName}: {string.Join(", ", targetThemeList)}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Loaded {targetThemeList.Count} shared themes from {fileName}: {string.Join(", ", targetThemeList)}");
                 }
 
                 if (root.TryGetProperty("jobClasses", out var jobClassesArray))
@@ -155,12 +155,12 @@ namespace FFTColorCustomizer.Services
                         loadedCount++;
                     }
 
-                    ModLogger.Log($"Loaded {loadedCount} job class definitions from {fileName}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Loaded {loadedCount} job class definitions from {fileName}");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"Failed to load {fileName}: {ex.Message}");
+                ModLogger.LogError(LogVerb.Theme, $"Failed to load {fileName}: {ex.Message}");
             }
         }
 
@@ -329,11 +329,11 @@ namespace FFTColorCustomizer.Services
                 var json = JsonSerializer.Serialize(jobClassesData, options);
                 File.WriteAllText(jsonPath, json);
 
-                ModLogger.Log($"Saved {_jobClasses.Count} job classes to JobClasses.json");
+                ModLogger.LogDebug(LogVerb.Theme, $"Saved {_jobClasses.Count} job classes to JobClasses.json");
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"Failed to save JobClasses.json: {ex.Message}");
+                ModLogger.LogError(LogVerb.Theme, $"Failed to save JobClasses.json: {ex.Message}");
             }
         }
     }
