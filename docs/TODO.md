@@ -22,6 +22,18 @@ that checklist.
 
 ## Backlog
 
+- [CC-48] 2026-11-02: Check that the theme files the mod writes come out byte for byte right, so
+  a change that breaks a palette fails the build instead of reaching a player. Add golden file
+  tests: patch a fixed theme into the committed charclut template and compare the result to a
+  committed golden copy, and do the same for one themed Ramza tex file. (Tech: NxdPatcher writes
+  CLUT data at 18 hard coded offsets and checks only the 4 byte NXDF magic; NxdPatcherTests checks
+  single offsets and round trips, not a whole patched file; the inputs are
+  ColorMod/Data/nxd/charclut.nxd and charclut.sqlite, and RamzaTexGenerator writes tex 830 to 835.
+  Add a test that the patcher refuses a template whose layout does not match too.)
+  - Done means: the patched charclut.nxd and one themed Ramza tex file are compared in full against
+    committed golden copies, and a template with the wrong layout is refused.
+  - Verify: changing one offset in NxdPatcher fails the golden test and the revert passes; suite
+    green.
 - [CC-10] 2026-07-21: Investigate the mod-broken-after-game-update reports. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
