@@ -11,7 +11,18 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [BUILDING]
+- **[CC-47] Take the shared rulebook so this mod builds under the same rules as the others** (opened 2026-11-02) [QUEUED]
+  - Done means: the mod carries gates/ as a subtree with its rules.json, compiles the shared logger
+    and tests in, imports the shared build settings and style file, and every gate runs green
+    locally and in CI with today's numbers recorded as the floor. No gameplay code changes. (Tech:
+    the hookup steps in gates/README.md; rules.json names prod, tests, projects and the CC prefix;
+    floor.json and the comment budget baseline come from today's files.)
+  - Verify: BuildLinked.ps1 and CI green on the hookup commit; the health numbers equal what the
+    repo's own copy printed before the swap; the build log names the rulebook version.
+
+## Backlog
+
+- [CC-10] 2026-07-21: Investigate the mod-broken-after-game-update reports. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
     code; triage doc docs/PORT_1.5.md), and a fix or a pinned compatibility note ships to Nexus.
@@ -37,7 +48,8 @@ that checklist.
     exact DllNotFoundException users hit) and green on the fixed zip; owner installed the
     fixed zip as a user and saved a new Ramza theme with no SQLite error. Remaining on this
     row: CC-12/CC-13 fixes and the Nexus outreach plus release.
-- **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [BUILDING]
+
+- [CC-2] 2026-07-21: Rework logging to the sibling mods' model. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: every line the mod prints says what kind of event it is and when it happened,
     the log file keeps the previous run instead of erasing it at launch, and the console stays
     quiet unless the player caused something or something went wrong. (Tech: typed ModLogger
@@ -57,7 +69,8 @@ that checklist.
     The two sink core already shipped (stages 1 and 2, v3.1.2); the quieting he is asking for
     is exactly the remaining conversion sweeps plus the strictness flip, so finishing stages
     3 to 6 is the fix and the console noise is the acceptance test.
-- **[CC-21] Give the twelve story NPCs colour themes of their own** (opened 2026-08-13) [BUILDING]
+
+- [CC-21] 2026-08-13: Give the twelve story NPCs colour themes of their own. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
     the colours are ones the owner has approved on screen, and choosing a theme actually recolours
     that character everywhere the game draws them. (Tech: one hand-edited recipe per character in
@@ -77,8 +90,6 @@ that checklist.
     StoryCharacters.json. Separately the baker and the contract test only handled a character's
     FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
     her three appearances.
-
-## Backlog
 
 - [CC-41] 2026-08-24: BUG. Gaffgarion's theme is not applying in game, reported by the owner
   while testing the Delita release. Notable because his two built in themes were owner live
