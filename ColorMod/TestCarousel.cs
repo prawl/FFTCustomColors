@@ -5,6 +5,7 @@ using FFTColorCustomizer.Configuration.UI;
 
 namespace FFTColorCustomizer
 {
+    /// <summary>Hand run window for eyeballing the preview carousel.</summary>
     public class TestCarousel
     {
         [STAThread]

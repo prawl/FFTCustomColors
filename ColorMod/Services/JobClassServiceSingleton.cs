@@ -1,7 +1,7 @@
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Singleton instance of JobClassDefinitionService for global access
+    /// Singleton instance of JobClassDefinitionService for global access.
     /// </summary>
     public static class JobClassServiceSingleton
     {
@@ -27,7 +27,7 @@ namespace FFTColorCustomizer.Services
         /// <summary>
         /// Resets the singleton instance (mainly for testing), matching the Reset() every other
         /// service singleton exposes. Without it, a test that Initializes this to a temp folder
-        /// leaves that instance live for whichever test reads Instance next (CC-26).
+        /// leaves that instance live for whichever test reads Instance next.
         /// </summary>
         public static void Reset()
         {

@@ -9,7 +9,7 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests.Configuration.UI
 {
-    // CC-26: this class points UserThemeServiceSingleton (a static, process-wide global) at its
+    // this class points UserThemeServiceSingleton (a static, process-wide global) at its
     // own temp folder. Sharing the RegistryTests collection keeps it from running at the same
     // time as any other class that does the same thing, so one class can never read through the
     // global into a folder another class has already deleted.

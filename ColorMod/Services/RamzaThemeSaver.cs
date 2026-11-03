@@ -97,7 +97,7 @@ namespace FFTColorCustomizer.Services
 
         /// <summary>
         /// Gets the NXD Key and Key2 values for a chapter.
-        /// Key maps: Ch1=1, Ch2/3=2, Ch4=3
+        /// Key maps, Ch1=1, Ch2/3=2, Ch4=3
         /// Key2 is always 0 for the base variant.
         /// </summary>
         public (int key, int key2) GetNxdKeyAndKey2(int chapter)

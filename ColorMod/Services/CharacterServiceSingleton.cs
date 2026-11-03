@@ -8,7 +8,7 @@ using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Singleton wrapper for CharacterDefinitionService to provide global access
+    /// Singleton wrapper for CharacterDefinitionService to provide global access.
     /// </summary>
     public static class CharacterServiceSingleton
     {
@@ -52,10 +52,10 @@ namespace FFTColorCustomizer.Services
 
         /// <summary>
         /// Resets the singleton instance (mainly for testing). Clears the mod path too, so a
-        /// forgotten temp directory from one test can never be looked up by the next: without
+        /// forgotten temp directory from one test can never be looked up by the next, without
         /// this, _modPath stayed set after Reset() and the next Instance access anywhere in the
         /// process would race to read StoryCharacters.json out of a folder that may already be
-        /// deleted (CC-26).
+        /// deleted.
         /// </summary>
         public static void Reset()
         {
@@ -104,7 +104,7 @@ namespace FFTColorCustomizer.Services
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
                 Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
                 Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile)
-                // Removed DevSourcePath reference - should use mod directory instead
+                // Removed DevSourcePath reference, should use mod directory instead
             });
 
             foreach (var path in possiblePaths)

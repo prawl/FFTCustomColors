@@ -10,20 +10,18 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
-    /// Handles initialization of mod components and dependencies
+    /// Handles initialization of mod components and dependencies.
     /// </summary>
     public class ModInitializer
     {
         private readonly string _modPath;
         private readonly string _sourcePath;
-        private readonly bool _isTestEnvironment;
 
         public ModInitializer(string modPath, bool isTestEnvironment = false)
         {
             _modPath = modPath ?? throw new ArgumentNullException(nameof(modPath));
             // In deployment, source and mod path are the same
             _sourcePath = _modPath;
-            _isTestEnvironment = isTestEnvironment;
         }
 
         /// <summary>
@@ -100,7 +98,7 @@ namespace FFTColorCustomizer.Core.ModComponents
         {
             // Validate theme files exist
             var validationService = new ThemeValidationService(_modPath);
-            var validationResults = validationService.ValidateConfiguration(config);
+            _ = validationService.ValidateConfiguration(config);
             validationService.LogValidationResults();
 
             // Initialize story character themes from config

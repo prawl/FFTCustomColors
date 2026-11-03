@@ -7,9 +7,9 @@ namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// A named preset colorway for one tier. Either a single whole-creature tint (<see cref="All"/>,
-    /// applied to every themable section — used for single-section families and families whose
+    /// applied to every themable section, used for single-section families and families whose
     /// per-part grouping isn't confirmed yet) or per-section colors (<see cref="BySection"/>, keyed
-    /// by JobSection.Name — a designed multi-part look). <see cref="ColorFor"/> resolves a section.
+    /// by JobSection.Name, a designed multi-part look). <see cref="ColorFor"/> resolves a section.
     /// </summary>
     public sealed class MonsterPreset
     {
@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.Services
         public MonsterPreset(Color all) { All = all; BySection = Empty; }
         public MonsterPreset(Dictionary<string, Color> bySection) { All = null; BySection = bySection; }
 
-        /// <summary>Color for a section name: its explicit per-section color, else the whole-creature
+        /// <summary>Color for a section name, its explicit per-section color, else the whole-creature
         /// tint, else null (leave that section at its original palette).</summary>
         public Color? ColorFor(string sectionName)
             => BySection.TryGetValue(sectionName, out var c) ? c : All;
@@ -32,10 +32,10 @@ namespace FFTColorCustomizer.Services
     /// (battle_&lt;name&gt;_spr.bin in FFTPack unit/) as palettes 0/1/2; recolor = edit that bin's
     /// palette section indices (uniformHue). See docs/ADDING_A_MONSTER.md.
     ///
-    /// <see cref="Family"/> is the one canonical key: it names the editor entry, the
+    /// <see cref="Family"/> is the one canonical key, it names the editor entry, the
     /// Images/&lt;Family&gt;/original/ HD-BMP folder, the Data/SectionMappings/Monster/&lt;Family&gt;.json
     /// mapping, and the SpriteSheetExtractor.FrameLayout.For("&lt;Family&gt;") crop. User themes save
-    /// under it (tier-agnostic — one recolor applies to any tier's palette).
+    /// under it (tier-agnostic, one recolor applies to any tier's palette).
     /// </summary>
     public sealed class MonsterFamily
     {
@@ -76,16 +76,16 @@ namespace FFTColorCustomizer.Services
     /// <summary>
     /// The catalog of themable monster families. Adding a family here (plus its section mapping,
     /// HD BMP, original bin, and FrameLayout) wires it into Config, the config window, the theme
-    /// editor, the apply pipeline, and serialization — no per-family code elsewhere.
+    /// editor, the apply pipeline, and serialization, no per-family code elsewhere.
     ///
-    /// Presets: single-color families use <see cref="P"/> (one tint applied to every section). Once a
+    /// Presets, single-color families use <see cref="P"/> (one tint applied to every section). Once a
     /// family's per-part section grouping is confirmed in-editor, its presets become per-section
-    /// colorways via <see cref="Sec"/> (see Aevis — distinct Wing/Chest/Eye/Feet colors per preset).
+    /// colorways via <see cref="Sec"/> (see Aevis, distinct Wing/Chest/Eye/Feet colors per preset).
     ///
-    /// Note on a couple of source bins: FFT internal names diverge from the bestiary. The Malboro
+    /// Note on a couple of source bins, FFT internal names diverge from the bestiary. The Malboro
     /// uses battle_mol_spr.bin ("mol" = Morbol; battle_mara is a humanoid). The Dragon uses
     /// battle_dora1_spr.bin (its palettes 0/1/2 carry the green/blue/red tiers; battle_dora_spr is
-    /// a humanoid with empty palettes 1/2). Hydra/Tiamat is deferred — battle_hebi_spr.bin has no
+    /// a humanoid with empty palettes 1/2). Hydra/Tiamat is deferred, battle_hebi_spr.bin has no
     /// 3-tier palette swap (only palette 0 populated), so it needs a separate source-bin study.
     /// </summary>
     public static class MonsterThemeRegistry
@@ -101,7 +101,7 @@ namespace FFTColorCustomizer.Services
                 Convert.ToInt32(h.Substring(4, 2), 16));
         }
 
-        // Single-color presets: three tiers, each a list of (name, "#RRGGBB") tints applied to every
+        // Single-color presets, three tiers, each a list of (name, "#RRGGBB") tints applied to every
         // themable section (whole-creature recolor).
         private static Dictionary<string, Dictionary<string, MonsterPreset>> P(string fam,
             (string name, string hex)[] t1, (string name, string hex)[] t2, (string name, string hex)[] t3)
@@ -116,7 +116,7 @@ namespace FFTColorCustomizer.Services
             };
         }
 
-        // Per-section preset: a color per JobSection.Name. Sections not listed stay at the tier's
+        // Per-section preset, a color per JobSection.Name. Sections not listed stay at the tier's
         // original palette.
         private static MonsterPreset Sec(params (string section, string hex)[] parts)
             => new MonsterPreset(parts.ToDictionary(p => p.section, p => Hex(p.hex)));
@@ -130,7 +130,7 @@ namespace FFTColorCustomizer.Services
                     new[] { ("Crimson", "#C81E37"), ("Emerald", "#1EAF5F"), ("Violet", "#964BD2") },
                     new[] { ("Cyan", "#28C3CD"), ("Lime", "#8CCD2D"), ("Magenta", "#D737C3") })),
 
-            // Goblin — per-section presets (sections confirmed in-editor: Hat / Limbs / Stripe / Skin).
+            // Goblin, per-section presets (sections confirmed in-editor, Hat / Limbs / Stripe / Skin).
             new MonsterFamily("Goblin", "Goblin Family", "battle_gob_spr.bin",
                 new[] { "Goblin", "Black Goblin", "Gobbledygook" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -162,7 +162,7 @@ namespace FFTColorCustomizer.Services
                     new[] { ("Cryo", "#3858E0"), ("Frost", "#6080F8"), ("Voltage", "#7048D8") },
                     new[] { ("Cinder", "#484048"), ("Obsidian", "#202028"), ("Brimstone", "#706060") })),
 
-            // Panther — per-section presets (sections confirmed in-editor: Primary fur / Ears / Eyes).
+            // Panther, per-section presets (sections confirmed in-editor, Primary fur / Ears / Eyes).
             new MonsterFamily("Panther", "Panther Family", "battle_hyou_spr.bin",
                 new[] { "Red Panther", "Coeurl", "Vampire Cat" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -187,7 +187,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Mindflayer — per-section presets (sections confirmed in-editor: Robe / Hair&Skin / Accent).
+            // Mindflayer, per-section presets (sections confirmed in-editor, Robe / Hair&Skin / Accent).
             new MonsterFamily("Mindflayer", "Mindflayer Family", "battle_ika_spr.bin",
                 new[] { "Piscodaemon", "Squidrakin", "Mindflayer" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -212,7 +212,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Skeleton — per-section presets (sections confirmed in-editor: Cape / Primary bone / Leather).
+            // Skeleton, per-section presets (sections confirmed in-editor, Cape / Primary bone / Leather).
             new MonsterFamily("Skeleton", "Skeleton Family", "battle_sukeru_spr.bin",
                 new[] { "Skeleton", "Bonesnatch", "Skeletal Fiend" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -237,7 +237,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Ghost — per-section presets (sections confirmed in-editor: Primary body / Robe / Hair Band).
+            // Ghost, per-section presets (sections confirmed in-editor, Primary body / Robe / Hair Band).
             new MonsterFamily("Ghost", "Ghost Family", "battle_yurei_spr.bin",
                 new[] { "Ghoul", "Ghast", "Revenant" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -262,7 +262,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Ahriman — per-section presets (sections confirmed in-editor: Primary eye-body / Wings).
+            // Ahriman, per-section presets (sections confirmed in-editor, Primary eye-body / Wings).
             new MonsterFamily("Ahriman", "Ahriman Family", "battle_arli_spr.bin",
                 new[] { "Floating Eye", "Ahriman", "Plague Horror" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -287,7 +287,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Aevis — per-section presets (sections confirmed in-editor: Eye / Wings / Chest / Feet).
+            // Aevis, per-section presets (sections confirmed in-editor, Eye / Wings / Chest / Feet).
             new MonsterFamily("Aevis", "Aevis Family", "battle_tori_spr.bin",
                 new[] { "Jura Aevis", "Steelhawk", "Cockatrice" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -312,7 +312,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Pig — per-section presets (sections confirmed in-editor: Primary hide / Nose & Ears).
+            // Pig, per-section presets (sections confirmed in-editor, Primary hide / Nose & Ears).
             new MonsterFamily("Pig", "Pig Family", "battle_uri_spr.bin",
                 new[] { "Pig", "Swine", "Wild Boar" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -337,7 +337,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Treant — per-section presets (auto-derived: Foliage crown / Trunk bark).
+            // Treant, per-section presets (auto-derived, Foliage crown / Trunk bark).
             new MonsterFamily("Treant", "Treant Family", "battle_ki_spr.bin",
                 new[] { "Dryad", "Treant", "Elder Treant" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -362,7 +362,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Minotaur — per-section presets (auto-derived: Body hide / Limbs grey fur / Horns keratin).
+            // Minotaur, per-section presets (auto-derived, Body hide / Limbs grey fur / Horns keratin).
             new MonsterFamily("Minotaur", "Minotaur Family", "battle_minota_spr.bin",
                 new[] { "Wisenkin", "Minotaur", "Sekhret" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -387,7 +387,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Malboro — per-section presets (auto-derived: Body vine / Maw mouth).
+            // Malboro, per-section presets (auto-derived, Body vine / Maw mouth).
             new MonsterFamily("Malboro", "Malboro Family", "battle_mol_spr.bin",
                 new[] { "Malboro", "Ochu", "Great Malboro" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -412,7 +412,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Behemoth — per-section presets (auto-derived: Body hide / Mane crest / Horns & Spikes).
+            // Behemoth, per-section presets (auto-derived, Body hide / Mane crest / Horns & Spikes).
             new MonsterFamily("Behemoth", "Behemoth Family", "battle_behi_spr.bin",
                 new[] { "Behemoth", "Behemoth King", "Dark Behemoth" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -437,7 +437,7 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Dragon — per-section presets (auto-derived: Body scales / Belly underscales).
+            // Dragon, per-section presets (auto-derived, Body scales / Belly underscales).
             new MonsterFamily("Dragon", "Dragon Family", "battle_dora1_spr.bin",
                 new[] { "Dragon", "Blue Dragon", "Red Dragon" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -462,11 +462,11 @@ namespace FFTColorCustomizer.Services
                     },
                 }),
 
-            // Hydra — per-section presets (auto-derived: Body scales / Belly underscales; mirrors Dragon).
+            // Hydra, per-section presets (auto-derived, Body scales / Belly underscales; mirrors Dragon).
             // Source bin battle_dora2_spr.bin (pal0/1/2 all populated 14/14/15; pal0 == Tiamat HD BMP
             // 1098/1099/1136 1:1, quantized L1=0). Structural twin of the Dragon (dora1) family. The old
             // guess battle_hebi_spr.bin had only pal0 live. idx14 is the cross-tier eye sentinel (blue/
-            // magenta/green per tier) — left unthemed, the mirror of Dragon's idx15 magenta sentinel.
+            // magenta/green per tier), left unthemed, the mirror of Dragon's idx15 magenta sentinel.
             new MonsterFamily("Hydra", "Hydra Family", "battle_dora2_spr.bin",
                 new[] { "Hydra", "Greater Hydra", "Tiamat" },
                 new Dictionary<string, Dictionary<string, MonsterPreset>>
@@ -515,7 +515,7 @@ namespace FFTColorCustomizer.Services
             return (fam != null && ti >= 0) ? fam.PaletteIndices[ti] : 0;
         }
 
-        /// <summary>Dropdown theme names for a tier: "original" plus the family's presets for that tier.</summary>
+        /// <summary>Dropdown theme names for a tier, "original" plus the family's presets for that tier.</summary>
         public static List<string> GetThemeNames(string tierKey)
         {
             var names = new List<string> { Original };

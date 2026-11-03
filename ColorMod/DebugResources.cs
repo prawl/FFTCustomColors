@@ -4,6 +4,7 @@ using System.Reflection;
 
 namespace FFTColorCustomizer.Debug
 {
+    /// <summary>Lists the embedded resources of the mod assembly for debugging.</summary>
     public static class DebugResources
     {
         public static void ListEmbeddedResources()

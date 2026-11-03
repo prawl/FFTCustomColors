@@ -7,7 +7,7 @@ namespace FFTColorCustomizer.Utilities
     }
 
     /// <summary>
-    /// Truthful user-facing text for a failed sprite copy (CC-13). The old messages were
+    /// Truthful user-facing text for a failed sprite copy. The old messages were
     /// DEBUG-tier and promised "theme will be applied via path redirection", a mechanism
     /// that does not run in production; the change was silently dropped. These compose the
     /// honest warning every catch site logs instead.

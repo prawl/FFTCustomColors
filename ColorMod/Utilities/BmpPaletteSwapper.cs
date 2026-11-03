@@ -7,10 +7,10 @@ using System.Runtime.InteropServices;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Swaps the 16-color palette of an indexed (Mode=P) HD sprite-sheet BMP using
-    /// the palette baked into a themed sprite .bin file (or an external palette).
+    /// Swaps the 16 color palette of an indexed HD sprite sheet BMP for a themed bin's palette.
+    /// An external palette works too.
     /// The BMP's pixel indices align 1:1 with the bin's 16-color palette, so this is
-    /// a pure palette-table swap — pixel data is untouched.
+    /// a pure palette-table swap, pixel data is untouched.
     /// </summary>
     public static class BmpPaletteSwapper
     {
@@ -56,9 +56,9 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// Loads <paramref name="bmpPath"/> keeping its own embedded palette, normalizing only
-        /// the transparency convention: palette index 0 becomes fully transparent and indices
+        /// the transparency convention, palette index 0 becomes fully transparent and indices
         /// 1-15 fully opaque. Use this for the "original"/un-themed load paths so downstream
-        /// extraction can key transparency off the alpha channel — the same contract the
+        /// extraction can key transparency off the alpha channel, the same contract the
         /// palette-swapping loaders above already satisfy.
         /// </summary>
         public static Bitmap LoadWithOriginalPalette(string bmpPath)
@@ -71,36 +71,36 @@ namespace FFTColorCustomizer.Utilities
         /// <summary>
         /// Loads a themed sprite-sheet BMP whose transparency may have been lost. The export
         /// pipeline flattens some themed sheets (notably Ramza's per-theme BMPs) to a
-        /// non-indexed 24bpp format with the transparent background baked to solid black —
+        /// non-indexed 24bpp format with the transparent background baked to solid black,
         /// which renders as a black box behind the sprite.
         ///
         /// When <paramref name="bmpPath"/> is non-indexed, transparency is recovered from
-        /// <paramref name="maskBmpPath"/> — the matching <em>indexed</em> "original" sheet —
+        /// <paramref name="maskBmpPath"/>, the matching <em>indexed</em> "original" sheet,
         /// by treating every pixel that is palette index 0 in the mask as transparent. The
         /// two sheets share an identical layout, so this restores the alpha channel without
-        /// guessing: a pixel the export rendered pure black is dropped only if the indexed
+        /// guessing, a pixel the export rendered pure black is dropped only if the indexed
         /// original says it is background, never because of its colour.
         ///
         /// When <paramref name="bmpPath"/> is itself indexed it carries its own index-0
         /// transparency, so this behaves exactly like <see cref="LoadWithOriginalPalette"/>
         /// and the mask is ignored. If the mask is missing or a different size, the themed
-        /// BMP is returned as-is — the preview degrades to the black box rather than crashing.
+        /// BMP is returned as-is, the preview degrades to the black box rather than crashing.
         /// </summary>
         public static Bitmap LoadWithTransparencyMask(string bmpPath, string maskBmpPath)
         {
             var bmp = new Bitmap(bmpPath);
 
-            // Indexed themed sheet: self-describing, same as the plain original-palette load.
+            // Indexed themed sheet, self-describing, same as the plain original-palette load.
             if ((bmp.PixelFormat & PixelFormat.Indexed) != 0)
             {
                 NormalizeIndex0Transparency(bmp);
                 return bmp;
             }
 
-            // Non-indexed themed sheet: recover transparency from the indexed original.
+            // Non-indexed themed sheet, recover transparency from the indexed original.
             bool[,] isBackground = TryReadIndex0Mask(maskBmpPath, bmp.Width, bmp.Height);
             if (isBackground == null)
-                return bmp; // no usable mask — degrade gracefully
+                return bmp; // no usable mask, degrade gracefully
 
             var result = new Bitmap(bmp.Width, bmp.Height, PixelFormat.Format32bppArgb);
             try
@@ -130,8 +130,8 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// Reads <paramref name="maskBmpPath"/> (an indexed bitmap) into a [width, height]
-        /// grid that is true wherever the mask pixel is palette index 0. Returns null —
-        /// meaning "no usable mask" — if the file is missing, not indexed, a different size
+        /// grid that is true wherever the mask pixel is palette index 0. Returns null,
+        /// meaning "no usable mask", if the file is missing, not indexed, a different size
         /// than <paramref name="width"/> x <paramref name="height"/>, or fails to decode.
         /// </summary>
         private static bool[,] TryReadIndex0Mask(string maskBmpPath, int width, int height)
@@ -192,7 +192,7 @@ namespace FFTColorCustomizer.Utilities
             }
             catch
             {
-                return null; // any decode/lock failure — degrade gracefully
+                return null; // any decode/lock failure, degrade gracefully
             }
         }
 
@@ -201,7 +201,7 @@ namespace FFTColorCustomizer.Utilities
         /// (alpha 255), leaving all RGB values untouched. No-op for non-indexed bitmaps.
         /// FFT sprites reserve palette index 0 as the transparent "background" color; encoding
         /// that in the alpha channel lets extraction tell a background pixel apart from a pixel
-        /// the user deliberately painted pure black.
+        /// the user painted pure black on purpose.
         /// </summary>
         public static void NormalizeIndex0Transparency(Bitmap bmp)
         {

@@ -8,7 +8,7 @@ namespace FFTColorCustomizer.Services
     /// Pure palette recolor for a monster bin. Recolors one palette's section indices to a base
     /// color, preserving the section's shade relationships (RelativeShadeGenerator). Mutates the
     /// byte[] in place. Each palette is 16 colors * 2 bytes (16-bit BGR555) at offset
-    /// paletteIndex*32; index 0 is transparent and never touched. Generic across all families —
+    /// paletteIndex*32; index 0 is transparent and never touched. Generic across all families,
     /// the family/tier wiring lives in <see cref="MonsterThemeRegistry"/>.
     /// </summary>
     public static class MonsterRecolor
@@ -26,7 +26,7 @@ namespace FFTColorCustomizer.Services
 
             if (MonsterThemeRegistry.TryGetPreset(tierKey, themeName, out var preset))
             {
-                // Per-section colorway: each section takes its own color (or the whole-creature
+                // Per-section colorway, each section takes its own color (or the whole-creature
                 // tint); sections the preset doesn't name are left at the original palette.
                 foreach (var section in sections)
                 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Represents a generic job class definition loaded from JobClasses.json
+    /// Represents a generic job class definition loaded from JobClasses.json.
     /// </summary>
     public class JobClassDefinition
     {

@@ -10,7 +10,7 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
-    /// Coordinates all configuration-related operations
+    /// Coordinates all configuration-related operations.
     /// </summary>
     public class ConfigurationCoordinator
     {
@@ -240,7 +240,7 @@ namespace FFTColorCustomizer.Core.ModComponents
 
                     if (form.ShowDialog() == DialogResult.OK)
                     {
-                        // CC-13: apply failures must not masquerade as "Failed to open
+                        // apply failures must not masquerade as "Failed to open
                         // configuration UI"; the window opened fine, the APPLY broke.
                         try
                         {

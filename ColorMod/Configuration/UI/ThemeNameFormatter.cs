@@ -4,13 +4,13 @@ using System.Globalization;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Utility class for formatting theme names for display in the UI
+    /// Utility class for formatting theme names for display in the UI.
     /// </summary>
     public static class ThemeNameFormatter
     {
         /// <summary>
         /// Formats theme name for display by removing underscores and capitalizing words
-        /// Example: "corpse_brigade" becomes "Corpse Brigade"
+        /// Example, "corpse_brigade" becomes "Corpse Brigade"
         /// </summary>
         public static string FormatThemeName(string themeName)
         {
@@ -35,7 +35,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
         /// <summary>
         /// Converts display theme name back to internal format
-        /// Example: "Corpse Brigade" becomes "corpse_brigade"
+        /// Example, "Corpse Brigade" becomes "corpse_brigade"
         /// </summary>
         public static string UnformatThemeName(string displayName)
         {

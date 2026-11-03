@@ -7,8 +7,7 @@ using System.Windows.Forms;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// A PictureBox that paints the embedded stone-tile plate as its background,
-    /// so transparent sprite images render as if standing on a stone floor.
+    /// A PictureBox with the stone tile plate as its background, so sprites stand on a floor.
     /// </summary>
     public class StoneTilePictureBox : PictureBox
     {
@@ -56,7 +55,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 return;
             }
 
-            // "Cover" scaling: fill the control, preserve aspect, center-crop the overflow.
+            // "Cover" scaling, fill the control, preserve aspect, center-crop the overflow.
             float scale = Math.Max((float)Width / tile.Width, (float)Height / tile.Height);
             int dw = (int)Math.Ceiling(tile.Width * scale);
             int dh = (int)Math.Ceiling(tile.Height * scale);

@@ -11,25 +11,21 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Adapter class that maintains backward compatibility with ConfigurationManager
-    /// while using the new ConfigurationService internally
+    /// Keeps the old ConfigurationManager surface while the configuration service does the work.
     /// </summary>
     public class ConfigurationManagerAdapter
     {
         private readonly IConfigurationService _configurationService;
-        private readonly string _configPath;
         private readonly JobClassDefinitionService? _jobClassService;
 
         public ConfigurationManagerAdapter(string configPath)
         {
-            _configPath = configPath;
             var pathResolver = new PathResolverAdapter(configPath);
             _configurationService = new ConfigurationService(pathResolver);
         }
 
         public ConfigurationManagerAdapter(string configPath, JobClassDefinitionService jobClassService)
         {
-            _configPath = configPath;
             _jobClassService = jobClassService;
             var pathResolver = new PathResolverAdapter(configPath);
             _configurationService = new ConfigurationService(pathResolver);
@@ -154,9 +150,9 @@ namespace FFTColorCustomizer.Configuration
                 // Mediators/Orators (waju)
                 ["waju_m"] = "Mediator_Male",
                 ["waju_w"] = "Mediator_Female",
-                // Dancers (odori - female only)
+                // Dancers (odori, female only)
                 ["odori_w"] = "Dancer_Female",
-                // Bards (gin - male only)
+                // Bards (gin, male only)
                 ["gin_m"] = "Bard_Male",
                 // Mimes (mono)
                 ["mono_m"] = "Mime_Male",
@@ -164,10 +160,10 @@ namespace FFTColorCustomizer.Configuration
                 // Calculators (san)
                 ["san_m"] = "Calculator_Male",
                 ["san_w"] = "Calculator_Female",
-                // WotL Jobs - Dark Knight (ankoku)
+                // WotL Jobs, Dark Knight (ankoku)
                 ["ankoku_m"] = "DarkKnight_Male",
                 ["ankoku_w"] = "DarkKnight_Female",
-                // WotL Jobs - Onion Knight (tama)
+                // WotL Jobs, Onion Knight (tama)
                 ["tama_m"] = "OnionKnight_Male",
                 ["tama_w"] = "OnionKnight_Female"
             };

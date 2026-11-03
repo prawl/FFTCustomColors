@@ -11,7 +11,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Refactored configuration form using partial classes and helper components
+    /// Refactored configuration form using partial classes and helper components.
     /// </summary>
     public partial class ConfigurationForm : Form
     {
@@ -29,9 +29,9 @@ namespace FFTColorCustomizer.Configuration
         private const int ResizeBorderWidth = 8;
         private const int WS_THICKFRAME = 0x40000; // Enables resizing
 
-        private Config _config;
-        private string _configPath;
-        private string _modPath;
+        private readonly Config _config;
+        private readonly string _configPath;
+        private readonly string _modPath;
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
@@ -42,23 +42,23 @@ namespace FFTColorCustomizer.Configuration
         private Panel _contentPanel;
 
         private bool _isFullyLoaded = false;
-        private bool _isInitializing = true;
+        private readonly bool _isInitializing = true;
         private bool _genericCharactersCollapsed = false;
-        private List<Control> _genericCharacterControls = new List<Control>();
+        private readonly List<Control> _genericCharacterControls = new List<Control>();
         private int _genericCharacterStartRow = -1;
         private int _genericCharacterEndRow = -1;
         private bool _storyCharactersCollapsed = false;
-        private List<Control> _storyCharacterControls = new List<Control>();
+        private readonly List<Control> _storyCharacterControls = new List<Control>();
         private bool _npcCharactersCollapsed = false;
-        private List<Control> _npcCharacterControls = new List<Control>();
+        private readonly List<Control> _npcCharacterControls = new List<Control>();
         private bool _themeEditorCollapsed = false;
-        private List<Control> _themeEditorControls = new List<Control>();
+        private readonly List<Control> _themeEditorControls = new List<Control>();
         private bool _myThemesCollapsed = false;
-        private List<Control> _myThemesControls = new List<Control>();
+        private readonly List<Control> _myThemesControls = new List<Control>();
         private bool _wotlJobsCollapsed = false;
-        private List<Control> _wotlJobsControls = new List<Control>();
+        private readonly List<Control> _wotlJobsControls = new List<Control>();
         private bool _monstersCollapsed = false;
-        private List<Control> _monstersControls = new List<Control>();
+        private readonly List<Control> _monstersControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration

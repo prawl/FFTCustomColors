@@ -5,8 +5,7 @@ using System.Linq;
 namespace FFTColorCustomizer.Registry
 {
     /// <summary>
-    /// Registry for all generic (non-story) characters in FFT
-    /// Similar to StoryCharacterRegistry but for generic job classes
+    /// Registry of every generic job character, the counterpart of StoryCharacterRegistry.
     /// </summary>
     public class GenericCharacterRegistry
     {
@@ -120,11 +119,11 @@ namespace FFTColorCustomizer.Registry
             RegisterCharacter("Calculator_Female", "Calculator (Female)", "Generic Characters",
                 "Color scheme for all female calculators", "CalculatorFemale", new[] { "san_w" });
 
-            // Bards (gin - male only)
+            // Bards (gin, male only)
             RegisterCharacter("Bard_Male", "Bard", "Generic Characters",
                 "Color scheme for all male bards", "BardMale", new[] { "gin_m" });
 
-            // Dancers (odori - female only)
+            // Dancers (odori, female only)
             RegisterCharacter("Dancer_Female", "Dancer", "Generic Characters",
                 "Color scheme for all female dancers", "DancerFemale", new[] { "odori_w" });
 
@@ -140,13 +139,13 @@ namespace FFTColorCustomizer.Registry
             RegisterCharacter("Chemist_Female", "Chemist (Female)", "Generic Characters",
                 "Color scheme for all female chemists", "ChemistFemale", new[] { "item_w" });
 
-            // WotL Jobs - Dark Knight (ankoku)
+            // WotL Jobs, Dark Knight (ankoku)
             RegisterCharacter("DarkKnight_Male", "Dark Knight (Male)", "WotL Jobs",
                 "Color scheme for all male dark knights", "DarkKnightMale", new[] { "ankoku_m" });
             RegisterCharacter("DarkKnight_Female", "Dark Knight (Female)", "WotL Jobs",
                 "Color scheme for all female dark knights", "DarkKnightFemale", new[] { "ankoku_w" });
 
-            // WotL Jobs - Onion Knight (tama)
+            // WotL Jobs, Onion Knight (tama)
             RegisterCharacter("OnionKnight_Male", "Onion Knight (Male)", "WotL Jobs",
                 "Color scheme for all male onion knights", "OnionKnightMale", new[] { "tama_m" });
             RegisterCharacter("OnionKnight_Female", "Onion Knight (Female)", "WotL Jobs",

@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Configuration for all job classes including shared and job-specific themes
+    /// Configuration for all job classes including shared and job-specific themes.
     /// </summary>
     public class JobClassConfig
     {
@@ -15,10 +15,10 @@ namespace FFTColorCustomizer.Services
         public List<string> SharedThemes { get; set; } = new List<string>();
 
         /// <summary>
-        /// For backward compatibility - maps to SharedThemes
+        /// The old availableThemes key. Only JSON reads it, so it is internal rather than private.
         /// </summary>
         [JsonProperty("availableThemes")]
-        private List<string> AvailableThemes
+        internal List<string> AvailableThemes
         {
             get => SharedThemes;
             set => SharedThemes = value ?? new List<string>();

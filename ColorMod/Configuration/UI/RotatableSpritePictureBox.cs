@@ -6,8 +6,7 @@ using System.Windows.Forms;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Sprite preview box that paints rotation arrows as an overlay on the
-    /// picture itself (matching the class-preview carousel pattern). Click
+    /// Sprite preview box that paints rotation arrows over the picture itself. Click
     /// the left third to rotate left; click the right third to rotate right;
     /// the middle third is a dead zone so users can click the sprite without
     /// triggering rotation. Inherits the stone-tile background from
@@ -31,7 +30,7 @@ namespace FFTColorCustomizer.Configuration.UI
         public event EventHandler? RotateRightRequested;
 
         /// <summary>
-        /// Test seam: dispatch a click at the given (x, y) without needing
+        /// Test seam, dispatch a click at the given (x, y) without needing
         /// to synthesize a real Windows mouse message.
         /// </summary>
         public void SimulateClickAt(int x, int y)

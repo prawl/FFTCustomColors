@@ -8,7 +8,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Configures and provides dependency injection services for the mod
+    /// Configures and provides dependency injection services for the mod.
     /// </summary>
     public static class ServiceProvider
     {

@@ -5,12 +5,12 @@ namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
     /// Which of the game's animation rigs a sprite sheet was drawn for. FFT ships two SEQ/SHP
-    /// pairs for standard humanoids: TYPE1 (the squire/armored skeleton) and TYPE2 (the
+    /// pairs for standard humanoids, TYPE1 (the squire/armored skeleton) and TYPE2 (the
     /// robed/skirted skeleton). Both rigs share body cells, arm source tiles and beat timing;
     /// ONLY the per-beat arm destination offsets differ, because each rig's arm art is drawn
     /// at a different position inside its tile. Compositing a sheet with the other rig's
-    /// offsets dislocates the arms (the CC-36 round-3 defect). Monsters add two more rigs
-    /// (CC-46): MON (most families plus Construct 8, one tile per beat) and CYOKO (Chocobo,
+    /// offsets dislocates the arms. Monsters add two more rigs,
+    /// MON (most families plus Construct 8, one tile per beat) and CYOKO (Chocobo,
     /// multi-tile composites), whose tables live in <see cref="MonsterWalkCycle"/> and share
     /// this class's beat count and durations. <see cref="WalkCycleTypes"/> says which rig
     /// each roster character uses.
@@ -24,7 +24,7 @@ namespace FFTColorCustomizer.Utilities
     }
 
     /// <summary>
-    /// One beat of a walk cycle: which 64x80 body cell to draw, and where the two 48x48 arm
+    /// One beat of a walk cycle, which 64x80 body cell to draw, and where the two 48x48 arm
     /// sub-sprites (drawn behind and in front of the body) come from and land. See
     /// <see cref="WalkCycle"/> for the full provenance of these numbers.
     /// </summary>
@@ -47,9 +47,8 @@ namespace FFTColorCustomizer.Utilities
     }
 
     /// <summary>
-    /// The authoritative walk-cycle composition tables (CC-36 rework rounds 2 and 3). Round 2
-    /// replaced the guessed armless half-stride with the real 8-beat composition parsed from
-    /// the game's TYPE1.SEQ/TYPE1.SHP; round 3 added the TYPE2 pair after the owner's live pass
+    /// The authoritative walk-cycle composition tables. The real 8-beat composition is parsed
+    /// from the game's TYPE1.SEQ/TYPE1.SHP, and the TYPE2 pair was added after the owner's live pass
     /// found dislocated arms on every robed/skirted character (TYPE1 offsets had been applied
     /// to everyone).
     ///
@@ -58,7 +57,7 @@ namespace FFTColorCustomizer.Utilities
     /// animation 6, walk backward is animation 7 in BOTH files. Front sequence = SHP frames
     /// [11,10,9,10,11,12,13,12], back = [16,15,14,15,16,17,18,17], identical for both types, as
     /// are the body tiles and arm source tiles. Per-beat arm placement is the arm tile's
-    /// destination offset minus the body tile's destination offset - the ONLY thing that
+    /// destination offset minus the body tile's destination offset, the ONLY thing that
     /// differs between TYPE1 and TYPE2. All coordinates are doubled for these HD sheets (SPR
     /// coords -> HD coords). Per-beat durations come from SEQ delays of 6/8/10 sixtieths of a
     /// second. Do not re-derive or adjust these values.
@@ -98,7 +97,7 @@ namespace FFTColorCustomizer.Utilities
             Type1Back[6] = new WalkBeat(new Point(0, 2), new Point(112, 256), new Point(16, 16), new Point(64, 256), new Point(0, 22));
             Type1Back[7] = Type1Back[5];
 
-            // TYPE2: same body cells and arm sources; the arm offsets are the rig's own.
+            // TYPE2, same body cells and arm sources; the arm offsets are the rig's own.
             // Negative X offsets are real (the far arm tucks past the body cell's left edge on
             // front beat 0, and the near arm on back beat 5); the compositor clips them.
             Type2Front = new WalkBeat[BeatCount];

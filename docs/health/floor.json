@@ -1,0 +1,21 @@
+{
+ "sha": "05162098",
+ "date": "2026-11-03",
+ "dirty": true,
+ "snapshot": {
+  "prod_files": 134,
+  "prod_lines": 23603,
+  "code_lines": 16723,
+  "test_files": 189,
+  "test_lines": 32798,
+  "test_ratio": 1.39,
+  "comment_share": 0.16,
+  "empty_catches": 16,
+  "catches": 111,
+  "methods": 885,
+  "long_methods": 23,
+  "long_files": 15,
+  "duplication": 0.0313
+ },
+ "since": "2026-11-03"
+}

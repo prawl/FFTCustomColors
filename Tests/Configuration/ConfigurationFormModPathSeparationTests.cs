@@ -154,7 +154,6 @@ namespace FFTColorCustomizer.Tests
                 "PreviewImageManager with config path should not find valid mod structure");
         }
 
-
         private System.Collections.Generic.List<PictureBox> GetAllPictureBoxes(Form form)
         {
             var pictureBoxes = new System.Collections.Generic.List<PictureBox>();

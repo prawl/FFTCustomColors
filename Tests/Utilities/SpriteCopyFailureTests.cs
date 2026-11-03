@@ -4,7 +4,7 @@ using Xunit;
 namespace FFTColorCustomizer.Tests
 {
     /// <summary>
-    /// CC-13: sprite-copy failures used to be demoted to DEBUG with the false promise
+    /// sprite-copy failures used to be demoted to DEBUG with the false promise
     /// "theme will be applied via path redirection" (no such redirection exists in
     /// production), silently dropping the user's change. The composed warning must tell
     /// the truth: the change was NOT applied, and what to do about it.

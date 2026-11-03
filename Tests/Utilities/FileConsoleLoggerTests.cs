@@ -11,7 +11,7 @@ using Xunit;
 namespace FFTColorCustomizer.Tests.Utilities
 {
     /// <summary>
-    /// The typed two-sink logger (CC-2 stage 1). The contract under test, from the proposal:
+    /// The typed two-sink logger. The contract under test, from the proposal:
     /// the FILE sink gets every line unconditionally (Debug included) with a timestamp and the
     /// verb bracket; the CONSOLE sink is curated by level, drops the verb on Info lines only,
     /// and dedups a repeated (level, verb, message) identity until the next apply-pass edge.

@@ -8,8 +8,7 @@ using ColorMod.Registry;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Reflection-based JSON converter that automatically handles all story character properties
-    /// without requiring manual updates for each new character
+    /// Newtonsoft converter that reads and writes every story character property by reflection.
     /// </summary>
     public class ReflectionBasedConfigJsonConverter : JsonConverter<Config>
     {
@@ -56,7 +55,7 @@ namespace FFTColorCustomizer.Configuration
 
             foreach (var property in jo.Properties())
             {
-                // Handle both formats: with underscores (Archer_Female) and without (ArcherFemale)
+                // Handle both formats, with underscores (Archer_Female) and without (ArcherFemale)
                 var configProperty = properties.FirstOrDefault(p =>
                     p.Name == property.Name ||
                     p.Name.Replace("_", "") == property.Name);

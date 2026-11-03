@@ -121,7 +121,7 @@ namespace Tests.Registry
             // NPC characters live in their own config-window section, and "original" is
             // always the first theme offered. The exact theme list is NOT pinned here:
             // NpcRosterContractTests owns that contract, and Alma now ships authored
-            // themes (CC-21), so duplicating the list would mean two files to update.
+            // themes, so duplicating the list would mean two files to update.
             var almaDefinition = _characterService.GetCharacterByName("Alma");
             Assert.NotNull(almaDefinition);
             Assert.Equal("NPC", almaDefinition.Category);

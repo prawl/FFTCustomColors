@@ -3,8 +3,7 @@ using FFTColorCustomizer.Services;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// ConfigurationManager now uses the new service architecture internally
-    /// while maintaining backward compatibility with existing code
+    /// The configuration manager, now a thin layer over the configuration service.
     /// </summary>
     public class ConfigurationManager : ConfigurationManagerAdapter
     {

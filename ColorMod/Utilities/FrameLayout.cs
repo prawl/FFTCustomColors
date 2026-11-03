@@ -25,9 +25,9 @@ namespace FFTColorCustomizer.Utilities
         public int OffsetX { get; } // pixel offset of the grid origin (for sheets whose frames aren't grid-aligned)
         public int OffsetY { get; }
 
-        // Explicit-rect mode: irregular monster sheets often place the two chosen poses at
+        // Explicit-rect mode, irregular monster sheets often place the two chosen poses at
         // positions a single uniform cell size can't isolate (different widths, non-uniform
-        // pitch — a wide cell that centers one pose swallows the other's neighbor). In that case
+        // pitch, a wide cell that centers one pose swallows the other's neighbor). In that case
         // the SW and NW source boxes are given outright; NE = mirror(NW), SE = mirror(SW).
         public bool UsesExplicitRects { get; }
         public Rectangle SwRect { get; }
@@ -71,10 +71,10 @@ namespace FFTColorCustomizer.Utilities
                 "Construct8" => new FrameLayout(96, 96, 1, 3, 0),
                 // Chocobo's HD sheet is irregular (poses aren't grid-aligned). The two clean
                 // front-facing standing poses (grid cells 6,5 and 7,5) sit at pixel (368,400),
-                // 64x64 each — SW = col 0, NW = col 1 from that origin.
+                // 64x64 each, SW = col 0, NW = col 1 from that origin.
                 "Chocobo" => new FrameLayout(64, 64, 0, 1, 0, 368, 400),
 
-                // Monster families — explicit per-pose boxes (irregular sheets, see
+                // Monster families, explicit per-pose boxes (irregular sheets, see
                 // docs/ADDING_A_MONSTER.md). SW = the front-facing standing pose, NW = the
                 // away-facing one (editor mirrors SW→SE, NW→NE). Boxes were human-picked off the
                 // numbered-pose images and auto-centered by scripts/monster/pick_poses.py.
@@ -101,13 +101,13 @@ namespace FFTColorCustomizer.Utilities
             };
         }
 
-        // --- CC-36: walk-cycle support --------------------------------------------------
+        // --- Walk cycle support ---
         //
         // Derived by direct inspection of shipped HD BMPs (Knight_Male, Monk_Male,
         // Squire_Female, RamzaChapter1, Agrias, DarkKnight_Male, Lettie) this session. Every
         // standard humanoid sheet is 512x512, 4bpp indexed, 64x80 cells, 8 columns per row.
         //
-        // Rework round 2: the walk-cycle BODY poses live in row 1 cols 0-2, row 0 cols 5-6, and
+        // The walk-cycle BODY poses live in row 1 cols 0-2, row 0 cols 5-6, and
         // row 2 col 0; the two arm sub-sprites the game composites per beat live in 48x48 blocks
         // in the sheet region y 160-256. The full 8-beat composition table (which body cell,
         // which arm boxes, at what offsets, for how long) lives in WalkCycle, with its own
@@ -116,7 +116,7 @@ namespace FFTColorCustomizer.Utilities
         //
         // Non-standard sheets (Construct8's 96x96 grid, Chocobo's offset grid, every monster's
         // explicit-rect layout) don't carry this layout, so they never use the HUMANOID walk
-        // tables. Since CC-46 they animate anyway: monster rigs (MON/CYOKO) address the sheet
+        // tables. They animate anyway, monster rigs (MON/CYOKO) address the sheet
         // through MonsterWalkCycle, and the explicit-rect TYPE1/TYPE2 monsters (Goblin,
         // Skeleton, Mindflayer) are standard humanoid sheets behind hand-picked static boxes.
         // WalkCycleTypes.SheetSupportsWalk is the support decision; this property only says
@@ -126,7 +126,7 @@ namespace FFTColorCustomizer.Utilities
         /// True only for the standard humanoid layout (see the derivation above). Construct 8's
         /// 96x96 columns, Chocobo's offset grid and every explicit-rect monster layout all
         /// return false, since their sheets don't match the coordinates <see cref="WalkCycle"/>
-        /// assumes (they animate through <see cref="MonsterWalkCycle"/> instead, see CC-46).
+        /// assumes (they animate through <see cref="MonsterWalkCycle"/> instead).
         /// </summary>
         public bool SupportsWalkCycle =>
             !UsesExplicitRects && FrameWidth == 64 && FrameHeight == 80 && SwCol == 1
@@ -134,7 +134,7 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// True when this character's walk frames should be cropped to the beats' shared
-        /// content box before display (CC-46). Explicit-rect monsters and Chocobo's offset
+        /// content box before display. Explicit-rect monsters and Chocobo's offset
         /// grid show TIGHT static poses, so an uncropped walk frame (full rig box, mostly
         /// padding) would make the sprite shrink in the Zoom-mode preview the moment Animate
         /// is toggled. Standard humanoids and Construct 8 render static poses at the full

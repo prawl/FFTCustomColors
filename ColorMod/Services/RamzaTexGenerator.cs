@@ -5,7 +5,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Generates themed tex files for Ramza that can be swapped at runtime
+    /// Generates themed tex files for Ramza that can be swapped at runtime.
     /// </summary>
     public class RamzaTexGenerator
     {

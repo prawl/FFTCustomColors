@@ -3,6 +3,7 @@ using System.Drawing;
 
 namespace FFTColorCustomizer.Utilities
 {
+    /// <summary>Cuts standing poses out of an HD sprite sheet.</summary>
     public class SpriteSheetExtractor
     {
         public Dictionary<Direction, Bitmap> ExtractAllDirections(Bitmap spriteSheet)
@@ -93,7 +94,7 @@ namespace FFTColorCustomizer.Utilities
                 for (int sy = 0; sy < spriteHeight; sy++)
                 {
                     // Bounds-check BOTH edges. A negative grid origin (offsetX/offsetY < 0, used to
-                    // center an off-grid pose) puts some source reads outside the sheet — those
+                    // center an off-grid pose) puts some source reads outside the sheet, those
                     // become transparent margin instead of throwing ArgumentOutOfRangeException.
                     if (x + sx >= 0 && y + sy >= 0 && x + sx < spriteSheet.Width && y + sy < spriteSheet.Height)
                     {
@@ -102,7 +103,7 @@ namespace FFTColorCustomizer.Utilities
                         // Transparency is keyed off the alpha channel, NOT off "the color is
                         // black". FFT sprites reserve palette index 0 as the transparent
                         // background, and the palette loaders (BmpPaletteSwapper) encode that
-                        // as alpha 0 — so only genuine background pixels are dropped. Keying
+                        // as alpha 0, so only genuine background pixels are dropped. Keying
                         // on RGB would erase any section the user painted pure black (#000000).
                         if (pixel.A == 0)
                         {

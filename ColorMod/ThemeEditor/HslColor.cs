@@ -3,11 +3,12 @@ using System.Drawing;
 
 namespace FFTColorCustomizer.ThemeEditor
 {
+    /// <summary>A color in hue, saturation and lightness with conversions to and from RGB.</summary>
     public struct HslColor
     {
-        public double H { get; set; }  // Hue: 0-360
-        public double S { get; set; }  // Saturation: 0-1
-        public double L { get; set; }  // Lightness: 0-1
+        public double H { get; set; }  // Hue, 0-360
+        public double S { get; set; }  // Saturation, 0-1
+        public double L { get; set; }  // Lightness, 0-1
 
         public HslColor(double h, double s, double l)
         {
@@ -84,19 +85,19 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             var hsl = FromRgb(baseColor);
 
-            // Shadow: darker, slightly more saturated
+            // Shadow, darker, slightly more saturated
             var shadow = new HslColor(hsl.H, Math.Min(hsl.S * 1.1, 1.0), hsl.L * 0.65);
 
-            // Highlight: lighter, slightly less saturated
+            // Highlight, lighter, slightly less saturated
             var highlight = new HslColor(hsl.H, hsl.S * 0.85, Math.Min(hsl.L * 1.35, 0.95));
 
-            // Accent: lighter detail color for trim/decorative elements (like boot/arm stripes)
+            // Accent, lighter detail color for trim/decorative elements (like boot/arm stripes)
             var accent = new HslColor(hsl.H, hsl.S * 0.7, Math.Min(hsl.L * 1.5, 0.90));
 
-            // AccentShadow: slightly darker version of accent for depth
+            // AccentShadow, slightly darker version of accent for depth
             var accentShadow = new HslColor(hsl.H, hsl.S * 0.8, Math.Min(hsl.L * 1.25, 0.80));
 
-            // Outline: darkest shade for edge outlines
+            // Outline, darkest shade for edge outlines
             var outline = new HslColor(hsl.H, Math.Min(hsl.S * 1.2, 1.0), hsl.L * 0.45);
 
             return new ColorShades(shadow.ToRgb(), baseColor, highlight.ToRgb(), accent.ToRgb(), accentShadow.ToRgb(), outline.ToRgb());

@@ -3,7 +3,7 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Applies theme color transformations to Ramza sprite previews
+    /// Applies theme color transformations to Ramza sprite previews.
     /// </summary>
     public class RamzaThemeApplier
     {

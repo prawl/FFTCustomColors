@@ -10,7 +10,7 @@ namespace FFTColorCustomizer.Tests.Utilities
 {
     /// <summary>
     /// The logging contract's enforcement gate (docs/LOGGING.md), ported from the sibling FFT
-    /// mods (CC-2 stage 2). Source-scan checks over ColorMod/**/*.cs:
+    /// mods. Source-scan checks over ColorMod/**/*.cs:
     ///
     /// 1. The LogVerb enum matches docs/LOGGING.md's committed verb table one-for-one: the doc
     ///    and the code cannot drift.

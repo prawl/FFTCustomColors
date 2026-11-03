@@ -13,13 +13,13 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests.ThemeEditor
 {
-    // --- CC-36: "Animate" checkbox, walk-cycle preview in the Theme Editor ---
+    // --- "Animate" checkbox, walk-cycle preview in the Theme Editor ---
     //
     // Standard humanoid HD sheets are 512x512, 4bpp indexed, 64x80 cells, 8 columns per row.
     // Row 1 holds the walk stride: cols 0-2 are the front-facing step (A, passing, B), cols
     // 3-6 are the back-facing step (A, passing, B, passing). See docs comment on
     // FrameLayout.SupportsWalkCycle for the full derivation. Non-standard sheets (Construct8,
-    // Chocobo, every explicit-rect monster) animate through the monster rigs since CC-46
+    // Chocobo, every explicit-rect monster) animate through the monster rigs
     // (MonsterWalkAnimationTests); only the HUMANOID tables are out of reach for them.
     public class WalkAnimationTests
     {
@@ -73,7 +73,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         /// <summary>
-        /// CC-36 defect fix: robed/skirted rigs use the game's TYPE2.SEQ/TYPE2.SHP walk data,
+        /// defect fix: robed/skirted rigs use the game's TYPE2.SEQ/TYPE2.SHP walk data,
         /// not TYPE1's. Parsed the same way as TYPE1 (Shishi parser port over the files shipped
         /// in the FFTPatcher repo): same animations 6/7, same frame indices, same body tiles,
         /// same arm source tiles, same delays; ONLY the arm destination offsets differ. Applying
@@ -291,7 +291,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         /// <summary>
-        /// OWNER'S ARMLESS-CATCHER: round 1 shipped a walk cycle that rendered without arms.
+        /// OWNER'S ARMLESS-CATCHER: the first cut shipped a walk cycle that rendered without arms.
         /// Loads the REAL repo sheet (not a synthetic fixture) and asserts every beat's frame
         /// carries meaningfully more opaque pixels than the bare body cell alone, so a
         /// regression that silently drops the arm compositing (e.g. an offset that lands fully
@@ -563,7 +563,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 knightModifier.SupportsWalkAnimation.Should().BeTrue();
 
                 // (c) HD sheet present and the job's layout is non-standard: supported since
-                // CC-46 through the MON rig (Construct 8 is a Steel Giant, BATTLE.BIN 0x9A).
+                // through the MON rig (Construct 8 is a Steel Giant, BATTLE.BIN 0x9A).
                 WriteWalkHdFixture(modPath, "Construct8", binPathConstruct8);
                 var construct8Modifier = new PaletteModifier();
                 construct8Modifier.LoadTemplate(binPathConstruct8, "Construct8", modPath);

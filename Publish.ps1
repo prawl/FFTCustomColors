@@ -25,8 +25,12 @@ param (
     [string]$OutputPath = ""
 )
 
-## => Shared pipeline (build, shared asset staging, the CC-10 manifest) <= ##
+## => Shared pipeline (build, shared asset staging, the package manifest) <= ##
 . "$PSScriptRoot\tools\pipeline.ps1"
+
+# A cmdlet error anywhere lands in the main catch below, so a package is never built on top of
+# a step that quietly failed.
+$ErrorActionPreference = "Stop"
 
 ## => Configuration <= ##
 # The build folder's NAME becomes the wrapper folder INSIDE the zip — Vortex's
@@ -103,10 +107,6 @@ function Clean-DevInstallations {
 }
 
 function Build-Project {
-    # The contract-test gate (tools/pipeline.ps1, CC-16): a malformed ledger or a
-    # logging-contract violation refuses to package, same as the sibling mods.
-    Invoke-UnitTestGate -FailVerb PACKAGE
-
     Write-Status "Building FFT Color Customizer in Release mode..." "Cyan"
     # The release-flavor build (clean + restore + framework-dependent publish)
     # is the shared Invoke-ColorModBuild (tools/pipeline.ps1); it throws red.
@@ -125,7 +125,7 @@ function Copy-ModAssets {
     }
 
     # Mod icon + the SQLite native root copy (shared, tools/pipeline.ps1). The
-    # root-level e_sqlite3.dll is the CC-10 fix: Reloaded-II loads the mod in a
+    # root-level e_sqlite3.dll matters: Reloaded-II loads the mod in a
     # context where runtimes/<rid>/native probing alone is not reliable, so the
     # pinvoke falls back to same-directory resolution; a zip without the root
     # copy crashed Ramza theme saves for every zip user.
@@ -173,7 +173,7 @@ function Copy-ModAssets {
             # The 6 tex_*.bin files here are the SHIPPED hair-highlight fixes
             # (tex_992/993/1000/1001/1012/1013), deployed deliberately by BuildLinked.ps1.
             # A previous blanket "remove loose dev tex files" delete stripped them from
-            # every release (CC-10 finding); do NOT delete tex_*.bin here.
+            # every release; do NOT delete tex_*.bin here.
         }
 
         # Count sprite files
@@ -226,7 +226,7 @@ function Clean-BuildOutput {
     # NOTE: *.deps.json is deliberately NOT in this list. FFTColorCustomizer.deps.json is
     # load-bearing: without it .NET cannot map runtimes/win-x64/native/e_sqlite3.dll, and
     # Ramza SQLite theming dies with a SqliteConnection type-initializer crash for every
-    # zip user (CC-10; deleting it here was the root cause).
+    # zip user (deleting it here was the root cause).
     $patterns = @(
         "*.pdb",
         "*.xml",
@@ -450,6 +450,27 @@ function Verify-Package {
     return $true
 }
 
+function Write-HealthReport {
+    # The release's code health record. Runs after the package is verified, so only a shippable
+    # package gets one. In GitHub Actions it runs for tag pushes only. A failure here warns and
+    # never fails the release; the build reminder chases it later.
+    param([string]$ModVersion)
+
+    if ($env:GITHUB_ACTIONS -and $env:IS_RELEASE -ne 'true') { return }
+    Write-Status "Writing the code health report..." "Cyan"
+    $healthArgs = @('report', '--version', $ModVersion, '--write')
+    if ($env:GITHUB_STEP_SUMMARY) { $healthArgs += @('--summary', $env:GITHUB_STEP_SUMMARY) }
+    & python "$PSScriptRoot\gates\tools\health.py" @healthArgs
+    if ($LASTEXITCODE -ne 0) {
+        $msg = "The code health report for $ModVersion could not be written (exit $LASTEXITCODE). Run: python gates/tools/health.py report --version $ModVersion --write"
+        Write-Host "[WARN] $msg" -ForegroundColor Yellow
+        if ($env:GITHUB_ACTIONS) { Write-Host "::warning title=Code health::$msg" }
+    }
+    elseif (-not $env:GITHUB_ACTIONS) {
+        Write-Host "  -> Commit docs/HEALTH.md and docs/health/v$ModVersion.json with the release." -ForegroundColor Yellow
+    }
+}
+
 ## => Main Script <= ##
 
 Write-Host "`n=====================================" -ForegroundColor Magenta
@@ -467,6 +488,18 @@ Split-Path $MyInvocation.MyCommand.Path | Push-Location
 $exitCode = 1
 
 try {
+    # The shared gates, inside their own temp folder. Any red refuses the package.
+    Write-Status "Running the shared gates..." "Cyan"
+    $gateTemp = Enter-GateTemp
+    try {
+        Invoke-ManifestGate -FailVerb PACKAGE
+        Invoke-FormatGate -FailVerb PACKAGE
+        Invoke-UnitTestGate -FailVerb PACKAGE
+        Invoke-HealthGate -FailVerb PACKAGE
+        Invoke-TempLeftoverGate -FailVerb PACKAGE -GateTemp $gateTemp
+    }
+    finally { Exit-GateTemp -State $gateTemp }
+
     # Step 1: Clean
     Clean-BuildDirectories
     Clean-DevInstallations
@@ -493,7 +526,7 @@ try {
         # release because nothing checked the artifact contents).
         $verifyOk = Verify-Package -PackagePath $packagePath
 
-        # Content gate: manifest-driven verification of the ZIP itself (CC-10).
+        # Content gate: manifest-driven verification of the ZIP itself.
         if ($verifyOk) {
             Write-Status "Running package content gate (tools/analyze.py)..." "Cyan"
             python tools/analyze.py --zip "$packagePath"
@@ -503,7 +536,7 @@ try {
             }
         }
 
-        # Functional gate: SQLite must actually open from the packaged layout (CC-10).
+        # Functional gate: SQLite must actually open from the packaged layout.
         if ($verifyOk) {
             Write-Status "Running SQLite functional smoke (tools/SqliteSmoke)..." "Cyan"
             dotnet run --project tools/SqliteSmoke -c Release -- "$packagePath"
@@ -533,6 +566,8 @@ try {
             Write-Host "Version: $finalVersion" -ForegroundColor Yellow
             Write-Host "=====================================" -ForegroundColor Magenta
             $exitCode = 0
+
+            Write-HealthReport -ModVersion $finalVersion
         }
     }
     else {

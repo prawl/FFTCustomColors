@@ -160,7 +160,7 @@ namespace FFTColorCustomizer.ThemeEditor
             if (!Directory.Exists(storyPath))
                 return new string[0];
 
-            // Explicit sort: directory enumeration order is filesystem-dependent
+            // Explicit sort, directory enumeration order is filesystem-dependent
             return Directory.GetFiles(storyPath, "*.json")
                 .Select(f => Path.GetFileNameWithoutExtension(f))
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)

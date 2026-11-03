@@ -11,7 +11,7 @@ using FFTColorCustomizer.ThemeEditor;
 namespace Tests.Registry
 {
     /// <summary>
-    /// Contract for the built-in NPC colour themes (CC-21).
+    /// Contract for the built-in NPC colour themes.
     ///
     /// A theme is authored ONCE as a recipe under Data/BuiltInThemes/NPC/&lt;Character&gt;.json:
     /// a theme name plus the base colour the owner picked for each section they changed.

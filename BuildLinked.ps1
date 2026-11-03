@@ -101,10 +101,18 @@ if (Test-Path $modPath) {
     }
 }
 
-# The contract-test gate (tools/pipeline.ps1, CC-16): a malformed ledger or a
-# logging-contract violation refuses to deploy, same as the sibling mods.
+# The shared gates, inside their own temp folder. Any red refuses the deploy.
+Write-Host "Running the shared gates..." -ForegroundColor Cyan
 try {
-    Invoke-UnitTestGate -FailVerb DEPLOY
+    $gateTemp = Enter-GateTemp
+    try {
+        Invoke-ManifestGate -FailVerb DEPLOY
+        Invoke-FormatGate -FailVerb DEPLOY
+        Invoke-UnitTestGate -FailVerb DEPLOY
+        Invoke-HealthGate -FailVerb DEPLOY
+        Invoke-TempLeftoverGate -FailVerb DEPLOY -GateTemp $gateTemp
+    }
+    finally { Exit-GateTemp -State $gateTemp }
 } catch {
     Write-Host "$_" -ForegroundColor Red
     Pop-Location
@@ -190,7 +198,7 @@ if (Test-Path "ColorMod/FFTIVC") {
         # WHICH characters own themed folders is read from the character registry, never
         # hardcoded here. A hardcoded list silently dropped every NPC theme folder: the
         # registry advertised the theme, the folder never deployed, the player selected it
-        # and got vanilla, with no error in any log. See CC-21.
+        # and got vanilla, with no error in any log.
         Write-Host "Copying story character themed sprites..." -ForegroundColor Cyan
         $registryCharacters = (Get-Content "ColorMod/Data/StoryCharacters.json" -Raw | ConvertFrom-Json).characters |
             ForEach-Object { [regex]::Escape($_.name.ToLower()) }
@@ -337,7 +345,7 @@ Copy-ImageAssets -Dest $modPath
 
 # TLDR: Verify deployment succeeded (fail loud on missing pieces; no silent drift).
 # Manifest-driven (tools/package_manifest.json via tools/pipeline.ps1) - the SAME
-# manifest tools/analyze.py gates the release zip against (CC-10), plus the
+# manifest tools/analyze.py gates the release zip against, plus the
 # monster-family asset sweep. This replaces the old inline required-file lists,
 # so deploy and package verification can never drift apart.
 Write-Host "`nVerifying deployment..." -ForegroundColor Cyan

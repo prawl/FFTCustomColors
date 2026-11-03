@@ -4,8 +4,7 @@ using System.Runtime.InteropServices;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// The result of trying to apply a DPI-unaware thread context: which variant stuck,
-    /// or None if the platform does not support the API and the scope was a no-op.
+    /// What applying a DPI unaware thread context achieved, or None when the API is missing.
     /// </summary>
     public enum DpiScopeResult
     {
@@ -29,7 +28,7 @@ namespace FFTColorCustomizer.Utilities
         private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
 
         private readonly Func<IntPtr, IntPtr> _setContext;
-        private IntPtr _previousContext;
+        private readonly IntPtr _previousContext;
         private bool _disposed;
 
         public DpiScopeResult AppliedContext { get; }
@@ -63,7 +62,7 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (EntryPointNotFoundException)
             {
-                // Pre-Win10-1607: the API does not exist. Stay a no-op.
+                // Pre-Win10-1607, the API does not exist. Stay a no-op.
             }
             catch (DllNotFoundException)
             {

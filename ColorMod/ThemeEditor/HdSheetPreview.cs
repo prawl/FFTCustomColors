@@ -7,8 +7,8 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.ThemeEditor
 {
     /// <summary>
-    /// Pure helpers for the HD-BMP preview path (walking a character's Images/&lt;job&gt;/original
-    /// sheet, applying the live palette, and cutting out a pose or a walk-cycle frame). Split out
+    /// Pure helpers for the HD BMP preview path. They walk a character's original sheet, apply
+    /// the live palette, and cut out a pose or a walk cycle frame. Split out
     /// of <see cref="PaletteModifier"/> so that class stays under the repo's line-count trigger,
     /// this file owns exactly the file-path resolution and sheet-rendering logic, nothing else.
     /// </summary>
@@ -97,7 +97,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <see cref="TileWalkFrameCompositor"/>; humanoid rigs on an explicit-rect monster
         /// sheet (Goblin, Skeleton, Mindflayer) composite with the STANDARD layout, since
         /// their sheets really are standard humanoid layouts behind hand-picked static boxes
-        /// (CC-46). Characters whose static pose is a tight crop get their walk frames cropped
+        ///. Characters whose static pose is a tight crop get their walk frames cropped
         /// to the beats' shared content box, so the Zoom-mode preview keeps the sprite the
         /// same size when the animation starts. Returns null if any phase comes back null
         /// (i.e. a humanoid layout the walk cycle can't address, which the caller should have
@@ -108,7 +108,7 @@ namespace FFTColorCustomizer.ThemeEditor
             var layout = FrameLayout.For(imagesFolderName);
             var cornerDir = ToCornerDirection(directionIndex);
             // Each sheet is drawn for one specific rig; compositing with another rig's
-            // offsets dislocates the arms (the CC-36 round-3 defect).
+            // offsets dislocates the arms.
             var walkType = WalkCycleTypes.For(imagesFolderName);
             bool monsterRig = walkType == WalkCycleType.Mon || walkType == WalkCycleType.Cyoko;
             var humanoidLayout = layout.SupportsWalkCycle ? layout : FrameLayout.Standard;

@@ -10,7 +10,7 @@ using Xunit;
 namespace Tests.Data
 {
     /// <summary>
-    /// Contract for every JSON file the mod ships (CC-34). Until now a typo in a recipe or a
+    /// Contract for every JSON file the mod ships. Until now a typo in a recipe or a
     /// registry failed silently at runtime; this walks the repo, checks each family against a
     /// schema under Tests/Data/Schemas/, and fails the build instead. The straggler test is the
     /// load-bearing half: a new data file that belongs to no known family goes red here, so

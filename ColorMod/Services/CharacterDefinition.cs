@@ -2,6 +2,7 @@ using System;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>One character's name, sprite names, default theme and config section.</summary>
     public class CharacterDefinition
     {
         public string Name { get; set; } = string.Empty;

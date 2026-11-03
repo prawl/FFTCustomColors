@@ -4,8 +4,8 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// One tile of a monster walk-cycle beat: a source box on the HD sheet, where its top-left
-    /// lands inside the rig's frame box, and whether the tile is drawn mirrored. Draw order in
+    /// One tile of a monster walk beat. It names a source box on the HD sheet, where its top
+    /// left lands inside the rig's frame box, and whether the tile is drawn mirrored. Draw order in
     /// a beat's array is back to front.
     /// </summary>
     public readonly struct WalkTileDraw
@@ -23,13 +23,13 @@ namespace FFTColorCustomizer.Utilities
     }
 
     /// <summary>
-    /// The walk-cycle composition tables for the game's two monster animation rigs (CC-46).
+    /// The walk-cycle composition tables for the game's two monster animation rigs.
     /// BATTLE.BIN's sprite-attributes table (0x2D748) assigns every roster sprite a SHP/SEQ
-    /// pair: most monster families plus Construct 8 use MON, Chocobo uses CYOKO (Goblin,
+    /// pair, most monster families plus Construct 8 use MON, Chocobo uses CYOKO (Goblin,
     /// Skeleton and Mindflayer use the humanoid TYPE1/TYPE2 rigs in WalkCycle instead).
     ///
     /// Parsed from the game's own animation data (MON and CYOKO SEQ/SHP as shipped in the
-    /// FFTPatcher repo, via the same faithful port of Shishi's parser as CC-36): walk forward
+    /// FFTPatcher repo, via the same faithful port of Shishi's parser): walk forward
     /// is animation 6 and walk backward is animation 7 in both files, with the exact 8-beat
     /// palindrome and 6/8/10-sixtieths delays of the humanoid walk, so BeatCount and
     /// BeatDurationsMs in WalkCycle apply unchanged. MON beats are one 48x48 tile; CYOKO

@@ -8,7 +8,7 @@ namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Patches charclut.nxd files by updating CLUTData bytes in place.
-    /// This avoids the need to fully reimplement the NXD format - we just
+    /// This avoids the need to fully reimplement the NXD format, we just
     /// read the SQLite, convert JSON to bytes, and patch the NXD template.
     /// </summary>
     public class NxdPatcher
@@ -18,25 +18,25 @@ namespace FFTColorCustomizer.Services
         // Each CLUT is 48 bytes, stored consecutively starting at 0x379
         private static readonly Dictionary<(int key, int key2), int> ClutDataOffsets = new()
         {
-            // Key 1 (Chapter 1) - 4 variants
+            // Key 1 (Chapter 1), 4 variants
             { (1, 0), 0x379 },
             { (1, 1), 0x3A9 },
             { (1, 2), 0x3D9 },
             { (1, 3), 0x409 },
-            // Key 2 (Chapter 2/3) - 4 variants
+            // Key 2 (Chapter 2/3), 4 variants
             { (2, 0), 0x439 },
             { (2, 1), 0x469 },
             { (2, 2), 0x499 },
             { (2, 3), 0x4C9 },
-            // Key 3 (Chapter 4) - 4 variants
+            // Key 3 (Chapter 4), 4 variants
             { (3, 0), 0x4F9 },
             { (3, 1), 0x529 },
             { (3, 2), 0x559 },
             { (3, 3), 0x589 },
-            // Key 254 (special) - 2 variants
+            // Key 254 (special), 2 variants
             { (254, 0), 0x5B9 },
             { (254, 1), 0x5E9 },
-            // Key 255 (special) - 2 variants
+            // Key 255 (special), 2 variants
             { (255, 0), 0x619 },
             { (255, 1), 0x649 },
         };

@@ -6,7 +6,7 @@ using System.Windows.Forms;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// A ComboBox wrapper that displays formatted theme names while maintaining internal theme values
+    /// A ComboBox wrapper that displays formatted theme names while maintaining internal theme values.
     /// </summary>
     public class ThemeComboBox : ComboBox
     {

@@ -3,6 +3,7 @@ using System.Reflection;
 
 namespace FFTColorCustomizer.Configuration
 {
+    /// <summary>Merges two configs property by property through reflection.</summary>
     public static class ReflectionBasedConfigMerger
     {
         public static Config MergeConfigs(Config existingConfig, Config incomingConfig)
@@ -58,7 +59,7 @@ namespace FFTColorCustomizer.Configuration
                 }
             }
 
-            // Handle RamzaColors - preserve existing if incoming is default
+            // Handle RamzaColors, preserve existing if incoming is default
             MergeRamzaColors(existingConfig, incomingConfig, mergedConfig);
 
             return mergedConfig;

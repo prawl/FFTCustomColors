@@ -8,7 +8,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Validates that theme files exist for configured story characters
+    /// Validates that theme files exist for configured story characters.
     /// </summary>
     public class ThemeValidationService
     {
@@ -153,7 +153,7 @@ namespace FFTColorCustomizer.Services
                 foreach (var file in files)
                 {
                     var fileName = Path.GetFileNameWithoutExtension(file);
-                    // Extract theme name from pattern: battle_{sprite}_{theme}_spr
+                    // Extract theme name from pattern, battle_{sprite}_{theme}_spr
                     var parts = fileName.Split('_');
                     if (parts.Length >= 3)
                     {

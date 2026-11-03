@@ -12,15 +12,15 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests.ThemeEditor
 {
-    // --- CC-46: walk-cycle preview for monsters, Chocobo and Construct 8 ---
+    // --- Walk-cycle preview for monsters, Chocobo and Construct 8 ---
     //
     // BATTLE.BIN's sprite-attributes table (0x2D748) assigns every sprite one of the game's
     // animation rigs. Goblin and Skeleton are TYPE1 and Mindflayer is TYPE2 (their sheets are
     // standard humanoid layouts, so the existing WalkCycle compositor covers them); Chocobo is
     // CYOKO and the other twelve families plus Construct 8 are MON, whose walk tables live in
-    // MonsterWalkCycle (parsed from MON/CYOKO SEQ+SHP exactly like CC-36 parsed TYPE1/TYPE2).
+    // MonsterWalkCycle (parsed from MON/CYOKO SEQ+SHP exactly like TYPE1/TYPE2 were).
     // Position asserts, not presence asserts: a tile that exists but lands in the wrong place
-    // passed CC-36's round-3 blind spot, so every check below pins coordinates.
+    // passed the humanoid work's blind spot, so every check below pins coordinates.
     public class MonsterWalkAnimationTests
     {
         // ------------------------------------------------------------------
@@ -396,7 +396,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         // ------------------------------------------------------------------
 
         /// <summary>
-        /// Sweeps the full CC-46 roster against the SHIPPED HD sheets through the real
+        /// Sweeps the full monster roster against the SHIPPED HD sheets through the real
         /// pipeline (HdSheetPreview.RenderWalkFrames: rig branch, layout choice and crop),
         /// so a family whose Images/ folder, rig entry and sheet content drift apart fails
         /// here and not in front of the owner. Substance checks per direction: 8 uniform

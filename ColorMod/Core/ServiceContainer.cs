@@ -6,7 +6,7 @@ using FFTColorCustomizer.Interfaces;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Simple dependency injection container implementation
+    /// Simple dependency injection container implementation.
     /// </summary>
     public class ServiceContainer : IServiceContainer
     {

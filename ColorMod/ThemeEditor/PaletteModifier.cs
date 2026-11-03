@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// Which palette in the bin the editor is reading and writing. Monster families pack their
         /// three ranks into one bin as palettes 0/1/2, so rank II and rank III are only reachable
         /// by setting this. Defaults to 0, which is rank I and the only palette single-palette
-        /// sprites have, so every non-monster caller behaves exactly as before. See CC-27.
+        /// sprites have, so every non-monster caller behaves exactly as before.
         /// </summary>
         public int PaletteIndex { get; set; }
 
@@ -50,7 +50,7 @@ namespace FFTColorCustomizer.ThemeEditor
             int b5 = (color.B * 31) / 255;
             ushort bgr555 = (ushort)(r5 | (g5 << 5) | (b5 << 10));
 
-            // Write into the SELECTED palette, not unconditionally palette 0 (CC-27)
+            // Write into the SELECTED palette, not unconditionally palette 0
             int offset = PaletteOffset + index * 2;
             _workingData[offset] = (byte)(bgr555 & 0xFF);
             _workingData[offset + 1] = (byte)(bgr555 >> 8);
@@ -94,7 +94,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// offset 0, because a saved theme is a flat set of section colors and
         /// <c>MonsterRecolor.ApplyUserPaletteSection</c> reads it as palette 0. With the default
         /// <see cref="PaletteIndex"/> of 0 this is byte-identical to a straight copy, so existing
-        /// themes and every single-palette caller are unaffected. See CC-27.
+        /// themes and every single-palette caller are unaffected.
         /// </summary>
         public byte[] GetModifiedPalette()
         {
@@ -114,7 +114,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// Gets a preview bitmap for the specified compass direction.
         /// </summary>
-        /// <param name="directionIndex">Compass direction: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW</param>
+        /// <param name="directionIndex">Compass direction, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW</param>
         /// <returns>The sprite bitmap for the specified direction</returns>
         public Bitmap GetPreview(int directionIndex = 5) // Default to SW
         {
@@ -126,7 +126,7 @@ namespace FFTColorCustomizer.ThemeEditor
             if (hdPreview != null)
                 return hdPreview;
 
-            // Construct 8 / tetsu has a non-standard sprite layout in the bin — use the
+            // Construct 8 / tetsu has a non-standard sprite layout in the bin, use the
             // custom rect (48x48 at x=48) when the HD BMP path isn't available.
             if (string.Equals(_jobName, "Construct8", StringComparison.OrdinalIgnoreCase))
             {
@@ -143,8 +143,8 @@ namespace FFTColorCustomizer.ThemeEditor
         /// Builds a high-resolution preview by applying the live-edited palette to the
         /// character's HD sprite-sheet BMP. Uses <see cref="GetModifiedPalette"/> rather than
         /// the raw working data, since that already places the SELECTED palette (see
-        /// <see cref="PaletteIndex"/>) at offset 0 — exactly the 32 bytes the swapper reads.
-        /// Returns null if no HD BMP is found — caller falls back to bin extraction.
+        /// <see cref="PaletteIndex"/>) at offset 0, exactly the 32 bytes the swapper reads.
+        /// Returns null if no HD BMP is found, caller falls back to bin extraction.
         /// </summary>
         private Bitmap TryGetHdPreview(int directionIndex)
         {
@@ -157,16 +157,16 @@ namespace FFTColorCustomizer.ThemeEditor
                 return null;
 
             // Apply the live palette. GetModifiedPalette() places the selected rank's 16
-            // BGR555 colors at offset 0, which is what the swapper reads (CC-27).
+            // BGR555 colors at offset 0, which is what the swapper reads.
             return HdSheetPreview.RenderPose(bmpPath, imagesFolderName, GetModifiedPalette(), directionIndex);
         }
 
         /// <summary>
         /// True when the walk-cycle preview (see <see cref="GetWalkPreviewFrames"/>) can
-        /// actually render: the modifier is loaded, has a job/mod path to find an HD sheet
-        /// with, that sheet exists, and the character's rig can address it (see CC-36 for the
-        /// humanoid rigs and CC-46 for the monster ones: MON/CYOKO tables always can, humanoid
-        /// tables need the standard layout or an explicit-rect monster sheet).
+        /// actually render, the modifier is loaded, has a job/mod path to find an HD sheet
+        /// with, that sheet exists, and the character's rig can address it (MON/CYOKO tables
+        /// always can, humanoid tables need the standard layout or an explicit-rect monster
+        /// sheet).
         /// </summary>
         public bool SupportsWalkAnimation
         {
@@ -189,7 +189,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// (<see cref="GetModifiedPalette"/>): callers must re-fetch after any palette edit,
         /// the returned frames are a snapshot, not a live view. Caller owns disposal of the
         /// returned bitmaps. Returns null when <see cref="SupportsWalkAnimation"/> is false.
-        /// HD-BMP only: the bin-extraction fallback (used when no HD sheet is found) does not
+        /// HD-BMP only, the bin-extraction fallback (used when no HD sheet is found) does not
         /// animate.
         /// </summary>
         public List<Bitmap> GetWalkPreviewFrames(int directionIndex)
@@ -268,10 +268,10 @@ namespace FFTColorCustomizer.ThemeEditor
         /// Copies the raw palette bytes for a specific index from another PaletteModifier.
         /// This avoids precision loss from BGR555 to RGB conversion. Writes into THIS
         /// modifier's SELECTED palette (<see cref="PaletteOffset"/>), not unconditionally
-        /// palette 0 — otherwise resetting a section on rank II/III would silently write into
+        /// palette 0, otherwise resetting a section on rank II/III would silently write into
         /// the untouched rank I bytes and leave the visible (selected-rank) colour unchanged.
         /// <paramref name="source"/>.GetModifiedPalette() already normalizes ITS OWN selected
-        /// palette to offset 0, so the read side stays a plain <c>index * 2</c>. See CC-27.
+        /// palette to offset 0, so the read side stays a plain <c>index * 2</c>.
         /// </summary>
         public void CopyPaletteIndex(int index, PaletteModifier source)
         {

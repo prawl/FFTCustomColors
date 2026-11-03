@@ -5,8 +5,7 @@ using System.Text.Json;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Persists the configuration window's last-used size to a small JSON file
-    /// next to Config.json so users don't have to resize on every launch.
+    /// Remembers the configuration window's last size in a small JSON file next to Config.json.
     /// Kept separate from Config.json to avoid touching the reflection-based
     /// theme converter.
     /// </summary>
@@ -65,7 +64,7 @@ namespace FFTColorCustomizer.Configuration.UI
             }
             catch
             {
-                // Persistence is best-effort: a failure to save the window size
+                // Persistence is best-effort, a failure to save the window size
                 // must never block closing the configuration form.
             }
         }

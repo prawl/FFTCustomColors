@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace FFTColorCustomizer
 {
+    /// <summary>Cycles through the available color schemes and remembers the current one.</summary>
     public class ColorSchemeCycler
     {
         private string _currentScheme = "original";
@@ -44,7 +45,7 @@ namespace FFTColorCustomizer
 
         public string GetNextScheme()
         {
-            // TLDR: Return next color scheme in cycle
+            // Return next color scheme in cycle
             if (_schemes.Count == 0)
             {
                 return _currentScheme; // No schemes available, return current
@@ -67,7 +68,7 @@ namespace FFTColorCustomizer
 
         public string GetPreviousScheme()
         {
-            // TLDR: Return previous color scheme in cycle
+            // Return previous color scheme in cycle
             if (_schemes.Count == 0)
             {
                 return _currentScheme; // No schemes available, return current
@@ -90,13 +91,13 @@ namespace FFTColorCustomizer
 
         public List<string> GetAvailableSchemes()
         {
-            // TLDR: Return list of available color schemes
+            // Return list of available color schemes
             return new List<string>(_schemes);
         }
 
         public string GetCurrentScheme()
         {
-            // TLDR: Return the current color scheme
+            // Return the current color scheme
             return _currentScheme;
         }
     }

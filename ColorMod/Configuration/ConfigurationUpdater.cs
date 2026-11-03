@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace FFTColorCustomizer.Configuration
 {
+    /// <summary>Merges an incoming config into the saved file and writes it back.</summary>
     public class ConfigurationUpdater
     {
         public void UpdateAndSaveConfiguration(Config incomingConfig, string configPath)

@@ -4,6 +4,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>The old theme manager, kept for callers not yet on the theme service.</summary>
     public class ThemeManagerLegacy
     {
         private readonly StoryCharacterThemeManager _storyCharacterManager;

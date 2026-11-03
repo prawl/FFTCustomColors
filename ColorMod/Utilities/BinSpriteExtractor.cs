@@ -6,7 +6,7 @@ using System.Drawing.Drawing2D;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Specifies which directional sprites to extract
+    /// Specifies which directional sprites to extract.
     /// </summary>
     public enum DirectionMode
     {
@@ -32,9 +32,9 @@ namespace FFTColorCustomizer.Utilities
 
         // Display size for extracted sprites (scaled 3x from 32x40 for better visibility)
         private const int DisplayWidth = 96;
-        private const int DisplayHeight = 120;  // Maintain aspect ratio: 32x40 -> 96x120
+        private const int DisplayHeight = 120;  // Maintain aspect ratio, 32x40 -> 96x120
 
-        // Cache for extracted sprites: key is "spriteIndex_paletteIndex_dataHash"
+        // Cache for extracted sprites, key is "spriteIndex_paletteIndex_dataHash"
         private readonly Dictionary<string, Bitmap> _spriteCache = new Dictionary<string, Bitmap>();
 
         /// <summary>
@@ -328,9 +328,10 @@ namespace FFTColorCustomizer.Utilities
                     dataHash ^= (data[2044] << 24) | (data[2045] << 16) | (data[2046] << 8) | data[2047];
                 }
             }
-            string cacheKey = $"{spriteIndex}_{paletteIndex}_{dataHash}";
 
-            // Disable cache - it's causing theme switching issues
+            _ = $"{spriteIndex}_{paletteIndex}_{dataHash}";
+
+            // Disable cache, it's causing theme switching issues
             // The performance is fine without caching
             // if (_spriteCache.TryGetValue(cacheKey, out var cachedSprite))
             // {
@@ -399,7 +400,7 @@ namespace FFTColorCustomizer.Utilities
             // Dispose of the temporary bitmap
             bitmap.Dispose();
 
-            // Don't cache - it's causing theme switching issues
+            // Don't cache, it's causing theme switching issues
             // _spriteCache[cacheKey] = displayBitmap;
 
             return displayBitmap;
@@ -417,14 +418,14 @@ namespace FFTColorCustomizer.Utilities
             var sprites = new Bitmap[8];
 
             // FFT sprite sheet layout (corrected based on Python script):
-            // Position 0: W (West - facing left)
-            // Position 1: SW (Southwest)
-            // Position 2: S (South - facing down)
-            // Position 3: NW (Northwest)
-            // Position 4: N (North - facing up/away)
-            // Position 5: Animation frame (not a direction)
-            // Position 6: E (actually a duplicate/animation, we'll mirror W for true E)
-            // Position 7: Animation frame (not a direction)
+            // Position 0 is W (West, facing left)
+            // Position 1 is SW (Southwest)
+            // Position 2 is S (South, facing down)
+            // Position 3 is NW (Northwest)
+            // Position 4 is N (North, facing up/away)
+            // Position 5 is Animation frame (not a direction)
+            // Position 6 is E (actually a duplicate/animation, we'll mirror W for true E)
+            // Position 7 is Animation frame (not a direction)
 
             // Extract the base 5 directional sprites
             sprites[6] = ExtractSprite(data, 0, paletteIndex); // W (West)
@@ -442,7 +443,6 @@ namespace FFTColorCustomizer.Utilities
 
             // SE (Southeast) = Mirror of SW (Southwest)
             sprites[3] = MirrorBitmap(sprites[5]); // SE from SW
-
 
             return sprites;
         }
@@ -475,8 +475,8 @@ namespace FFTColorCustomizer.Utilities
         {
             var allSprites = ExtractAllDirections(data, characterIndex, paletteIndex);
 
-            // Our sprite array order after extraction: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
-            // Cardinal directions: N(0), E(2), S(4), W(6)
+            // Our sprite array order after extraction, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
+            // Cardinal directions, N(0), E(2), S(4), W(6)
             return new Bitmap[]
             {
                 allSprites[0], // N
@@ -497,8 +497,8 @@ namespace FFTColorCustomizer.Utilities
         {
             var allSprites = ExtractAllDirections(data, characterIndex, paletteIndex);
 
-            // Our sprite array order after extraction: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
-            // Corner directions: NE(1), SE(3), SW(5), NW(7)
+            // Our sprite array order after extraction, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
+            // Corner directions, NE(1), SE(3), SW(5), NW(7)
             return new Bitmap[]
             {
                 allSprites[1], // NE
@@ -532,7 +532,7 @@ namespace FFTColorCustomizer.Utilities
             sprites[1] = MirrorBitmap(sprites[7]); // NE from NW
             sprites[3] = MirrorBitmap(sprites[5]); // SE from SW
 
-            // Return corner directions: NE(1), SE(3), SW(5), NW(7)
+            // Return corner directions, NE(1), SE(3), SW(5), NW(7)
             return new Bitmap[]
             {
                 sprites[1], // NE

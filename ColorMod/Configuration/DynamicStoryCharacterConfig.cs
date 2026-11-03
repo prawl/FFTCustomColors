@@ -8,8 +8,7 @@ using Newtonsoft.Json;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Dynamic configuration system for story characters that doesn't require
-    /// modifying Config.cs when adding new characters
+    /// Story character settings that need no Config.cs edit when a character is added.
     /// </summary>
     public class DynamicStoryCharacterConfig
     {

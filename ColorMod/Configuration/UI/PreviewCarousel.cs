@@ -13,9 +13,7 @@ namespace FFTColorCustomizer.Configuration.UI
     {
         private Image[] _images = new Image[0];
         private readonly Color _arrowColor = Color.FromArgb(200, 255, 255, 255);
-        private readonly Color _arrowHoverColor = Color.FromArgb(255, 255, 255, 255);
         private readonly Color _arrowShadow = Color.FromArgb(100, 0, 0, 0);
-        private bool _mouseIsOver = false;
 
         public int CurrentViewIndex { get; private set; } = 0;
 
@@ -39,12 +37,10 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private void OnMouseEnter(object sender, EventArgs e)
         {
-            _mouseIsOver = true;
         }
 
         private void OnMouseLeave(object sender, EventArgs e)
         {
-            _mouseIsOver = false;
         }
 
         public void SetImages(Image[] images)
@@ -74,47 +70,47 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 // Old images were disposed above; let the GC reclaim them on its own
                 // schedule. A forced GC.Collect() + WaitForPendingFinalizers() here ran a
-                // full blocking collection on the UI thread on every image swap — a
+                // full blocking collection on the UI thread on every image swap, a
                 // guaranteed stutter during theme changes.
 
                 // Store the current orientation before changing images
                 var previousIndex = CurrentViewIndex;
                 _images = images ?? new Image[0];
 
-            if (_images.Length > 0)
-            {
-                // Preserve orientation if possible, otherwise reset to 0
-                if (previousIndex < _images.Length)
+                if (_images.Length > 0)
                 {
-                    // Previous index is still valid, preserve it
-                    CurrentViewIndex = previousIndex;
-                    this.Image = _images[CurrentViewIndex];
+                    // Preserve orientation if possible, otherwise reset to 0
+                    if (previousIndex < _images.Length)
+                    {
+                        // Previous index is still valid, preserve it
+                        CurrentViewIndex = previousIndex;
+                        this.Image = _images[CurrentViewIndex];
+                    }
+                    else
+                    {
+                        // Previous index is out of bounds, reset to 0
+                        CurrentViewIndex = 0;
+                        this.Image = _images[0];
+                    }
+
+                    // Log for debugging
+                    System.Diagnostics.Debug.WriteLine($"PreviewCarousel: Set {_images.Length} images. CurrentIndex: {CurrentViewIndex}, SupportsNavigation: {SupportsNavigation}");
+
+                    // Check if images are actually different
+                    for (int i = 0; i < _images.Length; i++)
+                    {
+                        if (_images[i] != null)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"  Image[{i}]: Size={_images[i].Size}, Hash={_images[i].GetHashCode()}");
+                        }
+                    }
                 }
                 else
                 {
-                    // Previous index is out of bounds, reset to 0
+                    // No images, reset index
                     CurrentViewIndex = 0;
-                    this.Image = _images[0];
+                    this.Image = null;
                 }
-
-                // Log for debugging
-                System.Diagnostics.Debug.WriteLine($"PreviewCarousel: Set {_images.Length} images. CurrentIndex: {CurrentViewIndex}, SupportsNavigation: {SupportsNavigation}");
-
-                // Check if images are actually different
-                for (int i = 0; i < _images.Length; i++)
-                {
-                    if (_images[i] != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"  Image[{i}]: Size={_images[i].Size}, Hash={_images[i].GetHashCode()}");
-                    }
-                }
-            }
-            else
-            {
-                // No images, reset index
-                CurrentViewIndex = 0;
-                this.Image = null;
-            }
 
                 System.Diagnostics.Debug.WriteLine($"[PreviewCarousel] SetImages completed successfully with {_images.Length} images");
             }
@@ -158,7 +154,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Shows navigation arrows (compatibility method - arrows are always visible)
+        /// Shows navigation arrows (compatibility method, arrows are always visible)
         /// </summary>
         public void ShowArrows()
         {
@@ -167,7 +163,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Hides navigation arrows (compatibility method - arrows are always visible)
+        /// Hides navigation arrows (compatibility method, arrows are always visible)
         /// </summary>
         public void HideArrows()
         {
@@ -208,7 +204,6 @@ namespace FFTColorCustomizer.Configuration.UI
             OnMouseClick(e);
         }
 
-
         protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseClick(e);
@@ -220,7 +215,7 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
-        // Mouse wheel scrolling removed - caused conflicts with form scrolling
+        // Mouse wheel scrolling removed, caused conflicts with form scrolling
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -250,7 +245,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Draw right arrow (triangle pointing right)
             DrawRightArrow(g, this.Width - margin - arrowSize, arrowY, arrowSize);
 
-            // Removed view indicator dots - no longer needed
+            // Removed view indicator dots, no longer needed
         }
 
         private void DrawLeftArrow(Graphics g, int x, int y, int size)
@@ -309,7 +304,7 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
-        // DrawViewIndicator method removed - dots are no longer displayed
+        // DrawViewIndicator method removed, dots are no longer displayed
         // The carousel now shows only the navigation arrows when hovering
     }
 }

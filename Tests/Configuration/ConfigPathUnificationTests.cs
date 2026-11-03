@@ -6,7 +6,7 @@ using Xunit;
 namespace FFTColorCustomizer.Tests
 {
     /// <summary>
-    /// CC-13 split-brain fix: F1 saves could land in the mod folder while the Reloaded
+    /// split-brain fix: F1 saves could land in the mod folder while the Reloaded
     /// Configure button always writes Reloaded/User/Mods/&lt;namespace&gt;/Config.json, so a
     /// later-created User config silently reverted F1 selections. The resolver must make
     /// every flow converge on the User path, migrating an existing mod-folder config there

@@ -9,7 +9,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Service for managing job class definitions loaded from JobClasses.json
+    /// Service for managing job class definitions loaded from JobClasses.json.
     /// </summary>
     public class JobClassDefinitionService
     {
@@ -120,7 +120,7 @@ namespace FFTColorCustomizer.Services
                         }
 
                         // Load excluded shared themes if present (themes the user has decided
-                        // look bad on this specific job — filtered out of the dropdown).
+                        // look bad on this specific job, filtered out of the dropdown).
                         jobClass.ExcludedThemes = new List<string>();
                         if (jobElement.TryGetProperty("excludedThemes", out var excludedArray))
                         {

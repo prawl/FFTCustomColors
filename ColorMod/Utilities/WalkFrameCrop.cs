@@ -4,11 +4,11 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Crops a walk cycle's frames to the single content box they share (CC-46). Monster rig
+    /// Crops a walk cycle's frames to the single content box they share. Monster rig
     /// frame boxes are mostly padding (a 96x96 MON tile around a 60x70 monster), and the
     /// preview panes scale the bitmap to fit, so uncropped frames would shrink the sprite the
     /// moment the animation starts. Cropping every frame by the SAME box (the union of every
-    /// frame's opaque pixels) keeps the animation steady: a per-frame tight crop would make
+    /// frame's opaque pixels) keeps the animation steady, a per-frame tight crop would make
     /// the sprite wobble as its stride widens and narrows.
     /// </summary>
     public static class WalkFrameCrop
@@ -41,7 +41,7 @@ namespace FFTColorCustomizer.Utilities
             }
 
             if (x1 < x0)
-                return frames; // fully transparent everywhere: keep the original boxes
+                return frames; // fully transparent everywhere, keep the original boxes
 
             int width = x1 - x0 + 1;
             int height = y1 - y0 + 1;

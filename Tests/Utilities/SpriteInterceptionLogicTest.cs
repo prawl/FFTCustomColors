@@ -57,7 +57,6 @@ namespace Tests
             }
         }
 
-
         [Theory]
         [InlineData("battle_oran_spr.bin", false)]  // Wrong Orlandeau name - should NOT work
         [InlineData("battle_oru_spr.bin", true)]    // Correct Orlandeau name - should work

@@ -4,8 +4,8 @@ using FFTColorCustomizer.Services;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Turns a config-window character name ("Argath") into the internal FFT sprite name
-    /// ("aru"), the one that fills in battle_&lt;name&gt;_spr.bin.
+    /// Turns a config window character name such as Argath into its sprite name, such as aru.
+    /// That name fills in battle_&lt;name&gt;_spr.bin.
     ///
     /// The character registry (Data/StoryCharacters.json) is the source of truth, because it
     /// is also what the in-game apply path reads. Resolving both sides from the same place

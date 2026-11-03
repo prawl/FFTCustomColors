@@ -6,7 +6,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Manages lazy loading of images for PreviewCarousel controls
+    /// Manages lazy loading of images for PreviewCarousel controls.
     /// </summary>
     public class LazyImageLoader
     {

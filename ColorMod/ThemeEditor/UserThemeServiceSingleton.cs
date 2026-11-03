@@ -1,7 +1,7 @@
 namespace FFTColorCustomizer.ThemeEditor
 {
     /// <summary>
-    /// Singleton instance of UserThemeService for global access
+    /// Singleton instance of UserThemeService for global access.
     /// </summary>
     public static class UserThemeServiceSingleton
     {

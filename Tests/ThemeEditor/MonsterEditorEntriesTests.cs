@@ -6,7 +6,7 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests.ThemeEditor
 {
-    // --- CC-27: the editor must be able to reach ranks II and III, not just rank I ---
+    // --- The editor must be able to reach ranks II and III, not just rank I ---
     //
     // 16 monster families x 3 ranks = 48 themable monsters exist in the config dropdowns, but
     // the theme editor previously listed one entry per family and always edited palette 0. This

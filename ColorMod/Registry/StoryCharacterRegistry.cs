@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace ColorMod.Registry
 {
+    /// <summary>Thread safe registry of story character definitions by name.</summary>
     public static class StoryCharacterRegistry
     {
         private static readonly ConcurrentDictionary<string, StoryCharacterDefinition> _characters = new();

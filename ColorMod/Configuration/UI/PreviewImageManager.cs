@@ -14,11 +14,11 @@ namespace FFTColorCustomizer.Configuration.UI
         {
             _modPath = modPath;
             ModLogger.Log($"PreviewImageManager initialized with modPath: {modPath}");
-            // Note: We no longer use PNG preview files - this class is kept for compatibility
+            // We no longer use PNG preview files, this class is kept for compatibility
         }
 
         /// <summary>
-        /// Checks if the manager has a valid mod path with FFTIVC directory
+        /// Checks if the manager has a valid mod path with FFTIVC directory.
         /// </summary>
         public bool HasValidModPath()
         {
@@ -32,13 +32,13 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, string theme)
         {
-            // We no longer have preview images - just clear the preview box
+            // We no longer have preview images, just clear the preview box
             ClearPreview(pictureBox);
         }
 
         public void UpdateStoryCharacterPreview(PictureBox pictureBox, string characterName, string theme)
         {
-            // We no longer have preview images - just clear the preview box
+            // We no longer have preview images, just clear the preview box
             ClearPreview(pictureBox);
         }
 

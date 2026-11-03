@@ -10,7 +10,7 @@ namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Adapter that maintains backward compatibility with ThemeManager
-    /// while using the new ThemeService internally
+    /// while using the new ThemeService internally.
     /// </summary>
     public class ThemeManagerAdapter
     {
@@ -238,7 +238,7 @@ namespace FFTColorCustomizer.Services
             ModLogger.LogDebug($"Applying Ramza themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
             // Tex files are ONLY used for built-in themes (dark_knight, white_heretic, crimson_blade)
-            // User themes and "original" use NXD palettes only - tex files would interfere
+            // User themes and "original" use NXD palettes only, tex files would interfere
             var builtInPalettes = new RamzaBuiltInThemePalettes();
             var hasBuiltInTheme = builtInPalettes.IsBuiltInTheme(ch1Theme) ||
                                   builtInPalettes.IsBuiltInTheme(ch23Theme) ||
@@ -261,66 +261,13 @@ namespace FFTColorCustomizer.Services
             }
             else
             {
-                // No built-in themes - remove all tex files to let NXD palettes take effect
+                // No built-in themes, remove all tex files to let NXD palettes take effect
                 ModLogger.LogDebug("No built-in themes, removing all Ramza tex files");
                 texSwapper.RestoreOriginalTexFiles();
             }
 
             // Apply NXD palettes for all chapters
             ApplyBuiltInThemeToNxd(theme);
-        }
-
-        /// <summary>
-        /// Applies a user-created Ramza theme's palette to the charclut.nxd file.
-        /// Loads the saved palette from UserThemes folder and patches the NXD.
-        /// </summary>
-        private void ApplyUserThemeToNxd(string theme)
-        {
-            try
-            {
-                var userThemeService = new UserThemeService(_modPath);
-                var themeSaver = new RamzaThemeSaver();
-
-                // Try to load palette for each Ramza chapter that has this theme
-                var chapters = new[] { ("RamzaChapter1", 1), ("RamzaChapter23", 2), ("RamzaChapter4", 4) };
-                bool anyApplied = false;
-
-                foreach (var (chapterName, chapterNum) in chapters)
-                {
-                    if (userThemeService.IsUserTheme(chapterName, theme))
-                    {
-                        var palettePath = userThemeService.GetUserThemePalettePath(chapterName, theme);
-                        if (!string.IsNullOrEmpty(palettePath) && File.Exists(palettePath))
-                        {
-                            var paletteData = File.ReadAllBytes(palettePath);
-                            ModLogger.Log($"Applying user theme '{theme}' palette for {chapterName} from {palettePath}");
-
-                            // Convert palette to CLUTData and apply to NXD
-                            var clutData = themeSaver.ConvertPaletteToClutData(paletteData);
-                            var success = themeSaver.ApplyClutData(chapterNum, clutData, _modPath);
-
-                            if (success)
-                            {
-                                ModLogger.Log($"Successfully applied user theme NXD palette for {chapterName}");
-                                anyApplied = true;
-                            }
-                            else
-                            {
-                                ModLogger.LogWarning($"Failed to apply user theme NXD palette for {chapterName}");
-                            }
-                        }
-                    }
-                }
-
-                if (!anyApplied)
-                {
-                    ModLogger.LogWarning($"No user theme palettes found for theme: {theme}");
-                }
-            }
-            catch (Exception ex)
-            {
-                ModLogger.LogError($"Error applying user theme to NXD: {ex.Message}");
-            }
         }
 
         /// <summary>
@@ -383,7 +330,7 @@ namespace FFTColorCustomizer.Services
         private void ApplyOrlandeauTheme(string theme)
         {
             _themeService.ApplyTheme("Orlandeau", theme);
-            // Copy sprite files as needed - this would use SpriteService
+            // Copy sprite files as needed, this would use SpriteService
             CopyCharacterSprites("Orlandeau", theme);
         }
 

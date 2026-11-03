@@ -3,11 +3,11 @@ using System;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// The closed event-verb glossary for every log line the mod emits (the model shared with
-    /// the sibling FFT mods, theme-domain verbs instead of battle verbs). docs/LOGGING.md
+    /// The closed verb glossary every log line carries, theme verbs instead of battle verbs.
+    /// docs/LOGGING.md
     /// commits a verb table that must match this enum one-for-one; LogContractTests pins the
-    /// two in lockstep. The set is CLOSED: a new subsystem reuses one of these verbs, or the
-    /// doc gets amended deliberately; no ad-hoc per-module prefixes.
+    /// two in lockstep. The set is CLOSED, a new subsystem reuses one of these verbs, or the
+    /// doc gets amended first; no ad-hoc per-module prefixes.
     /// </summary>
     public enum LogVerb
     {

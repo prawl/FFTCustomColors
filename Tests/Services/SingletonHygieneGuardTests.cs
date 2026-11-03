@@ -10,7 +10,7 @@ using Xunit;
 namespace Tests.Services
 {
     /// <summary>
-    /// CC-26 guard. UserThemeServiceSingleton, CharacterServiceSingleton and
+    /// guard. UserThemeServiceSingleton, CharacterServiceSingleton and
     /// JobClassServiceSingleton are static, process-wide globals that several test classes
     /// point at their own throwaway temp folder. If a test sets one of these and never puts it
     /// back, the folder can vanish (test teardown deletes it) while some other, unrelated test
@@ -20,7 +20,7 @@ namespace Tests.Services
     ///
     /// A. Reset() must leave nothing behind. Every private static field on the three singleton
     ///    types (other than a lock object) must be null after Reset() runs, once something has
-    ///    set it. (This is the exact bug CC-26 found: CharacterServiceSingleton.Reset() nulled
+    ///    set it. (This is the exact bug once found: CharacterServiceSingleton.Reset() nulled
     ///    the cached instance but left the static mod path pointing at the deleted folder.)
     /// B. Every call site that sets one of these globals (Initialize/SetModPath) lives in a
     ///    source file that also calls the matching Reset(), so a new test can't add a setter

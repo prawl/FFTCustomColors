@@ -3,10 +3,10 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Builds walk-cycle preview frames by compositing a body cell with the two per-beat arm
-    /// sub-sprites <see cref="WalkCycle"/> specifies. Split out of
+    /// Builds walk preview frames from a body cell and the two per beat arm sub sprites.
+    /// <see cref="WalkCycle"/> specifies them. Split out of
     /// <see cref="SpriteSheetExtractor"/> (which keeps the standing-pose extraction) along the
-    /// natural seam: poses are plain cell crops, walk frames are multi-layer composites with a
+    /// natural seam, poses are plain cell crops, walk frames are multi-layer composites with a
     /// per-character rig choice.
     /// </summary>
     public static class WalkFrameCompositor
@@ -15,7 +15,7 @@ namespace FFTColorCustomizer.Utilities
         /// Extracts one beat of the walk cycle for <paramref name="direction"/> at
         /// <paramref name="phase"/> (taken modulo <see cref="WalkCycle.BeatCount"/>),
         /// compositing the body cell and both arm sub-sprites from
-        /// <paramref name="walkType"/>'s table - the rig MUST match the sheet
+        /// <paramref name="walkType"/>'s table, the rig MUST match the sheet
         /// (<see cref="WalkCycleTypes.For"/>), or the arms land dislocated. Returns null when
         /// <paramref name="layout"/> doesn't support the walk cycle (see
         /// <see cref="FrameLayout.SupportsWalkCycle"/>): non-standard sheets (Construct 8,
@@ -26,7 +26,7 @@ namespace FFTColorCustomizer.Utilities
             if (!layout.SupportsWalkCycle)
                 return null;
 
-            // Same NE/SE mirroring rule as ExtractSprite: only SW and NW are ever sampled from
+            // Same NE/SE mirroring rule as ExtractSprite, only SW and NW are ever sampled from
             // the sheet, the other two corners are their horizontal mirror of the finished frame.
             Direction sourceDirection = direction;
             bool shouldMirror = false;
@@ -48,7 +48,7 @@ namespace FFTColorCustomizer.Utilities
 
             var dest = new Bitmap(layout.FrameWidth, layout.FrameHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-            // z-order: far arm (behind), body, near arm (in front). Body offsets are always 0
+            // z-order, far arm (behind), body, near arm (in front). Body offsets are always 0
             // for the standard layout, which is the only one that ever reaches here; arm
             // offsets can be slightly negative on the TYPE2 rig (clipped, not an error).
             int bodyX = beat.BodyCell.X * layout.FrameWidth;

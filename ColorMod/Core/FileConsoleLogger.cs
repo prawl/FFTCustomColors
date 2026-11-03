@@ -6,17 +6,17 @@ using FFTColorCustomizer.Interfaces;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Production <see cref="ILogger"/> with TWO-SINK semantics (CC-2, the model shared with
-    /// the sibling FFT mods). The FILE sink (logs/live_log.txt, rotated per launch to
+    /// Production <see cref="ILogger"/> with two sink semantics, the model shared with
+    /// the sibling FFT mods. The FILE sink (logs/live_log.txt, rotated per launch to
     /// live_log.prev.txt so the run a user is reporting a bug about survives the relaunch)
     /// writes EVERY message, Debug tier included, UNCONDITIONALLY, each line timestamped to
     /// the millisecond. The CONSOLE sink only writes messages at or above
     /// <see cref="LogLevel"/>, and suppresses a typed line whose (level, verb, message)
     /// identity already appeared this apply pass; <see cref="NoteApplyPassEdge"/> resets that
-    /// seen-set. The FILE sink is never deduped: the evidence chain is never thinner than the
+    /// seen-set. The FILE sink is never deduped, the evidence chain is never thinner than the
     /// console.
     ///
-    /// RENDERING SPLIT: the FILE line always carries the verb:
+    /// RENDERING SPLIT, the FILE line always carries the verb:
     /// <c>[Color Customizer] [HH:mm:ss.fff] [LEVEL] [verb] description</c>. The CONSOLE line
     /// drops the "[verb] " segment at Info tier only (subject-first prose a player reads).
     /// Warning and Error console lines keep the verb (a Nexus bug report is a console paste),
@@ -25,9 +25,9 @@ namespace FFTColorCustomizer.Core
     /// The legacy untyped ILogger entry points stay alive during the call-site migration and
     /// render with timestamp and level but no verb bracket; the conversion sweeps retire them.
     ///
-    /// THREADING: every write locks <see cref="_gate"/>; the WPF configuration form logs from
+    /// THREADING, every write locks <see cref="_gate"/>; the WPF configuration form logs from
     /// its UI thread, so sinks must stay cheap (one append, no flushing schemes) and any
-    /// failure is swallowed: logging must never take down the form or the game.
+    /// failure is swallowed, logging must never take down the form or the game.
     /// </summary>
     public class FileConsoleLogger : ILogger
     {
@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Core
             = new HashSet<(LogLevel, LogVerb, string)>();
         private readonly object _gate = new object();
 
-        // Rotation must run once per process PER LOG DIRECTORY: Mod.cs constructs the logger
+        // Rotation must run once per process PER LOG DIRECTORY, Mod.cs constructs the logger
         // in more than one code path, and a second rotation would shove the fresh launch log
         // into .prev. Tests use unique temp dirs, so each still observes a real rotation.
         private static readonly object _rotateLock = new object();
@@ -47,7 +47,7 @@ namespace FFTColorCustomizer.Core
 
         public LogLevel LogLevel { get; set; } = LogLevel.Info;
 
-        /// <summary>Production ctor: logs into &lt;assembly dir&gt;/logs (the same location and
+        /// <summary>Production ctor, logs into &lt;assembly dir&gt;/logs (the same location and
         /// live_log.txt name the fft-dev helpers already tail), rotating the previous run to
         /// live_log.prev.txt.</summary>
         public FileConsoleLogger() : this(DiscoverLogsDir()) { }
@@ -56,7 +56,7 @@ namespace FFTColorCustomizer.Core
         /// once per process for that directory), console to stdout.</summary>
         public FileConsoleLogger(string logsDir) : this(SafeConsoleWrite, MakeFileSink(logsDir)) { }
 
-        /// <summary>Test seam: inject sinks so tests never touch the real console or
+        /// <summary>Test seam, inject sinks so tests never touch the real console or
         /// filesystem.</summary>
         public FileConsoleLogger(Action<string> consoleSink, Action<string> fileSink)
         {
@@ -81,7 +81,7 @@ namespace FFTColorCustomizer.Core
 
         /// <summary>Rotate any prior launch's live_log.txt to live_log.prev.txt, then return a
         /// closure appending one line per call. Failures (locked file, read-only folder, null
-        /// dir) degrade to "no file sink" rather than throwing: console logging must survive a
+        /// dir) degrade to "no file sink" rather than throwing, console logging must survive a
         /// broken deploy folder.</summary>
         private static Action<string> MakeFileSink(string logsDir)
         {
@@ -158,7 +158,7 @@ namespace FFTColorCustomizer.Core
             }
         }
 
-        /// <summary>Legacy lines: both sinks, no verb bracket, no dedup (a legacy call has no
+        /// <summary>Legacy lines, both sinks, no verb bracket, no dedup (a legacy call has no
         /// semantic identity to key on). File unconditional, console curated by level.</summary>
         private void WriteLegacy(LogLevel level, string message)
         {

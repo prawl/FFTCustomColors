@@ -10,15 +10,15 @@ using Newtonsoft.Json.Serialization;
 
 namespace FFTColorCustomizer.Configuration
 {
+    /// <summary>The old file backed configuration manager, kept for callers not yet on the service.</summary>
     public class ConfigurationManagerLegacy
     {
         private readonly string _configPath;
         private Config _cachedConfig;
-        private DateTime _lastFileWriteTime;
         private readonly object _lockObject = new object();
 
         // Use consistent JSON settings with reflection-based converter
-        // IMPORTANT: Use default naming (not camelCase) to match property names exactly
+        // Use default naming (not camelCase) to match property names exactly
         private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
@@ -59,7 +59,7 @@ namespace FFTColorCustomizer.Configuration
                     return _cachedConfig;
                 }
 
-                // No cache - need to load or create
+                // No cache, need to load or create
                 if (!File.Exists(_configPath))
                 {
                     ModLogger.Log($"Config file does not exist, creating new config");
@@ -74,7 +74,6 @@ namespace FFTColorCustomizer.Configuration
                     ModLogger.Log($"Read JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
                     _cachedConfig = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
                     ModLogger.Log($"Loaded config - Squire_Male: {_cachedConfig.Squire_Male}");
-                    _lastFileWriteTime = File.GetLastWriteTime(_configPath);
                     return _cachedConfig;
                 }
                 catch (Exception ex)
@@ -115,7 +114,6 @@ namespace FFTColorCustomizer.Configuration
 
                     // Update cache and timestamp
                     _cachedConfig = config;
-                    _lastFileWriteTime = DateTime.Now;
 
                     ModLogger.Log($"Config saved successfully");
                 }
@@ -164,7 +162,7 @@ namespace FFTColorCustomizer.Configuration
                 // Log current config state BEFORE change
                 ModLogger.Log($"BEFORE - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
 
-                // Debug: List all theme properties
+                // List all theme properties
                 var allProperties = typeof(Config).GetProperties()
                     .Where(p => p.PropertyType == typeof(string) &&
                                (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")))
@@ -195,7 +193,7 @@ namespace FFTColorCustomizer.Configuration
                         var afterValue = propertyInfo.GetValue(config);
                         ModLogger.Log($"Property value AFTER: {afterValue}");
 
-                        // Debug: Check if other properties were accidentally modified
+                        // Check if other properties were accidentally modified
                         ModLogger.Log($"After setting {jobProperty}, checking other properties:");
                         ModLogger.Log($"Squire_Male: {config.Squire_Male}");
                         ModLogger.Log($"Archer_Female: {config.Archer_Female}");
@@ -327,9 +325,9 @@ namespace FFTColorCustomizer.Configuration
                 // Mediators/Orators (waju)
                 ["waju_m"] = "Mediator_Male",
                 ["waju_w"] = "Mediator_Female",
-                // Dancers (odori - female only)
+                // Dancers (odori, female only)
                 ["odori_w"] = "Dancer_Female",
-                // Bards (gin - male only)
+                // Bards (gin, male only)
                 ["gin_m"] = "Bard_Male",
                 // Mimes (mono)
                 ["mono_m"] = "Mime_Male",

@@ -1,7 +1,7 @@
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Centralized constants for the FFT Color Mod
+    /// Centralized constants for the FFT Color Mod.
     /// </summary>
     public static class ColorModConstants
     {
@@ -48,7 +48,7 @@ namespace FFTColorCustomizer.Core
         public const string ModAuthor = "prawl";
         public const string ModNamespace = "paxtrick.fft.colorcustomizer";
 
-        // Development paths (should not be used in production - use mod directory instead)
+        // Development paths (should not be used in production, use mod directory instead)
         // This is now deprecated and should not be used
         // public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";
 

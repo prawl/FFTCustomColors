@@ -9,7 +9,7 @@ using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Generic theme manager for story characters using string-based themes
+    /// Generic theme manager for story characters using string-based themes.
     /// </summary>
     public class StoryCharacterThemeManager
     {
@@ -87,7 +87,7 @@ namespace FFTColorCustomizer.Utilities
                 return _currentThemes[characterName];
             }
 
-            // Fallback: check old registry for backward compatibility with tests
+            // Fallback, check old registry for backward compatibility with tests
             var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
 
             if (registeredCharacter != null)
@@ -114,7 +114,7 @@ namespace FFTColorCustomizer.Utilities
             }
             else
             {
-                // Fallback: check old registry enum for backward compatibility
+                // Fallback, check old registry enum for backward compatibility
                 var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
                 if (registeredCharacter?.EnumType != null && registeredCharacter.EnumType.IsEnum)
                 {
@@ -167,7 +167,7 @@ namespace FFTColorCustomizer.Utilities
             }
             else
             {
-                // Fallback: get themes from old registry enum for backward compatibility
+                // Fallback, get themes from old registry enum for backward compatibility
                 var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
                 if (registeredCharacter?.EnumType != null && registeredCharacter.EnumType.IsEnum)
                 {

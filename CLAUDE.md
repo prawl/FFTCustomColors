@@ -33,10 +33,10 @@ powershell.exe -ExecutionPolicy Bypass -File ./Publish.ps1
 
 ## Work Ledger (TODO system)
 
-`docs/TODO.md` is the work ledger, a CONTRACT file machine-checked by `Tests/TodoContractTests.cs`
-(ported from the FFTLivingWeapons system, CC id prefix). The full contract (section order,
-entry grammar, Now cap, exit rules, release-name lockstep, dash rules) is the Format section
-at the bottom of docs/TODO.md itself, enforced by the tests; ledger entries follow the
+`docs/TODO.md` is the work ledger, a CONTRACT file machine-checked by the shared TodoContractTests
+under gates/Tests (the FFTModGates rulebook, vendored as a subtree; CC id prefix). The full contract
+(section order, entry grammar, Now cap, exit rules, release-name lockstep, dash rules) is the Format
+section at the bottom of docs/TODO.md itself, enforced by the tests; ledger entries follow the
 ELI5-first rule (plain-language opening, technical detail in a "(Tech: ...)" tail). Notes:
 
 - AWAITING-LIVE resolutions and live-verify sign-offs are owner-only.

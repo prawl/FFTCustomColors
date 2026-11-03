@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Config class using string-based themes for all characters
+    /// Config class using string-based themes for all characters.
     /// </summary>
     [Newtonsoft.Json.JsonConverter(typeof(ReflectionBasedConfigJsonConverter))]
     [JsonConverter(typeof(ReflectionBasedSystemTextJsonConverter))]
@@ -14,10 +14,10 @@ namespace FFTColorCustomizer.Configuration
         public RamzaHslSettings RamzaColors { get; set; } = new();
 
         // Dictionary to store all generic job themes
-        private Dictionary<string, string> _jobThemes = new();
+        private readonly Dictionary<string, string> _jobThemes = new();
 
         // Dictionary to store all story character themes
-        private Dictionary<string, string> _storyCharacterThemes = new();
+        private readonly Dictionary<string, string> _storyCharacterThemes = new();
 
         // Metadata for each job
         private static readonly Dictionary<string, JobMetadata> _jobMetadata = BuildJobMetadata();
@@ -26,95 +26,95 @@ namespace FFTColorCustomizer.Configuration
         {
             var d = new Dictionary<string, JobMetadata>
             {
-            // Squires
-            ["Squire_Male"] = new JobMetadata("Generic Characters", "Male Squire", "Color scheme for all male squires", "SquireMale"),
-            ["Squire_Female"] = new JobMetadata("Generic Characters", "Female Squire", "Color scheme for all female squires", "SquireFemale"),
+                // Squires
+                ["Squire_Male"] = new JobMetadata("Generic Characters", "Male Squire", "Color scheme for all male squires", "SquireMale"),
+                ["Squire_Female"] = new JobMetadata("Generic Characters", "Female Squire", "Color scheme for all female squires", "SquireFemale"),
 
-            // Knights
-            ["Knight_Male"] = new JobMetadata("Generic Characters", "Male Knight", "Color scheme for all male knights", "KnightMale"),
-            ["Knight_Female"] = new JobMetadata("Generic Characters", "Female Knight", "Color scheme for all female knights", "KnightFemale"),
+                // Knights
+                ["Knight_Male"] = new JobMetadata("Generic Characters", "Male Knight", "Color scheme for all male knights", "KnightMale"),
+                ["Knight_Female"] = new JobMetadata("Generic Characters", "Female Knight", "Color scheme for all female knights", "KnightFemale"),
 
-            // Monks
-            ["Monk_Male"] = new JobMetadata("Generic Characters", "Male Monk", "Color scheme for all male monks", "MonkMale"),
-            ["Monk_Female"] = new JobMetadata("Generic Characters", "Female Monk", "Color scheme for all female monks", "MonkFemale"),
+                // Monks
+                ["Monk_Male"] = new JobMetadata("Generic Characters", "Male Monk", "Color scheme for all male monks", "MonkMale"),
+                ["Monk_Female"] = new JobMetadata("Generic Characters", "Female Monk", "Color scheme for all female monks", "MonkFemale"),
 
-            // Archers
-            ["Archer_Male"] = new JobMetadata("Generic Characters", "Male Archer", "Color scheme for all male archers", "ArcherMale"),
-            ["Archer_Female"] = new JobMetadata("Generic Characters", "Female Archer", "Color scheme for all female archers", "ArcherFemale"),
+                // Archers
+                ["Archer_Male"] = new JobMetadata("Generic Characters", "Male Archer", "Color scheme for all male archers", "ArcherMale"),
+                ["Archer_Female"] = new JobMetadata("Generic Characters", "Female Archer", "Color scheme for all female archers", "ArcherFemale"),
 
-            // White Mages
-            ["WhiteMage_Male"] = new JobMetadata("Generic Characters", "Male White Mage", "Color scheme for all male white mages", "WhiteMageMale"),
-            ["WhiteMage_Female"] = new JobMetadata("Generic Characters", "Female White Mage", "Color scheme for all female white mages", "WhiteMageFemale"),
+                // White Mages
+                ["WhiteMage_Male"] = new JobMetadata("Generic Characters", "Male White Mage", "Color scheme for all male white mages", "WhiteMageMale"),
+                ["WhiteMage_Female"] = new JobMetadata("Generic Characters", "Female White Mage", "Color scheme for all female white mages", "WhiteMageFemale"),
 
-            // Black Mages
-            ["BlackMage_Male"] = new JobMetadata("Generic Characters", "Male Black Mage", "Color scheme for all male black mages", "BlackMageMale"),
-            ["BlackMage_Female"] = new JobMetadata("Generic Characters", "Female Black Mage", "Color scheme for all female black mages", "BlackMageFemale"),
+                // Black Mages
+                ["BlackMage_Male"] = new JobMetadata("Generic Characters", "Male Black Mage", "Color scheme for all male black mages", "BlackMageMale"),
+                ["BlackMage_Female"] = new JobMetadata("Generic Characters", "Female Black Mage", "Color scheme for all female black mages", "BlackMageFemale"),
 
-            // Time Mages
-            ["TimeMage_Male"] = new JobMetadata("Generic Characters", "Male Time Mage", "Color scheme for all male time mages", "TimeMageMale"),
-            ["TimeMage_Female"] = new JobMetadata("Generic Characters", "Female Time Mage", "Color scheme for all female time mages", "TimeMageFemale"),
+                // Time Mages
+                ["TimeMage_Male"] = new JobMetadata("Generic Characters", "Male Time Mage", "Color scheme for all male time mages", "TimeMageMale"),
+                ["TimeMage_Female"] = new JobMetadata("Generic Characters", "Female Time Mage", "Color scheme for all female time mages", "TimeMageFemale"),
 
-            // Summoners
-            ["Summoner_Male"] = new JobMetadata("Generic Characters", "Male Summoner", "Color scheme for all male summoners", "SummonerMale"),
-            ["Summoner_Female"] = new JobMetadata("Generic Characters", "Female Summoner", "Color scheme for all female summoners", "SummonerFemale"),
+                // Summoners
+                ["Summoner_Male"] = new JobMetadata("Generic Characters", "Male Summoner", "Color scheme for all male summoners", "SummonerMale"),
+                ["Summoner_Female"] = new JobMetadata("Generic Characters", "Female Summoner", "Color scheme for all female summoners", "SummonerFemale"),
 
-            // Thieves
-            ["Thief_Male"] = new JobMetadata("Generic Characters", "Male Thief", "Color scheme for all male thieves", "ThiefMale"),
-            ["Thief_Female"] = new JobMetadata("Generic Characters", "Female Thief", "Color scheme for all female thieves", "ThiefFemale"),
+                // Thieves
+                ["Thief_Male"] = new JobMetadata("Generic Characters", "Male Thief", "Color scheme for all male thieves", "ThiefMale"),
+                ["Thief_Female"] = new JobMetadata("Generic Characters", "Female Thief", "Color scheme for all female thieves", "ThiefFemale"),
 
-            // Mediators
-            ["Mediator_Male"] = new JobMetadata("Generic Characters", "Male Mediator", "Color scheme for all male mediators", "MediatorMale"),
-            ["Mediator_Female"] = new JobMetadata("Generic Characters", "Female Mediator", "Color scheme for all female mediators", "MediatorFemale"),
+                // Mediators
+                ["Mediator_Male"] = new JobMetadata("Generic Characters", "Male Mediator", "Color scheme for all male mediators", "MediatorMale"),
+                ["Mediator_Female"] = new JobMetadata("Generic Characters", "Female Mediator", "Color scheme for all female mediators", "MediatorFemale"),
 
-            // Mystics
-            ["Mystic_Male"] = new JobMetadata("Generic Characters", "Male Mystic", "Color scheme for all male mystics", "MysticMale"),
-            ["Mystic_Female"] = new JobMetadata("Generic Characters", "Female Mystic", "Color scheme for all female mystics", "MysticFemale"),
+                // Mystics
+                ["Mystic_Male"] = new JobMetadata("Generic Characters", "Male Mystic", "Color scheme for all male mystics", "MysticMale"),
+                ["Mystic_Female"] = new JobMetadata("Generic Characters", "Female Mystic", "Color scheme for all female mystics", "MysticFemale"),
 
-            // Geomancers
-            ["Geomancer_Male"] = new JobMetadata("Generic Characters", "Male Geomancer", "Color scheme for all male geomancers", "GeomancerMale"),
-            ["Geomancer_Female"] = new JobMetadata("Generic Characters", "Female Geomancer", "Color scheme for all female geomancers", "GeomancerFemale"),
+                // Geomancers
+                ["Geomancer_Male"] = new JobMetadata("Generic Characters", "Male Geomancer", "Color scheme for all male geomancers", "GeomancerMale"),
+                ["Geomancer_Female"] = new JobMetadata("Generic Characters", "Female Geomancer", "Color scheme for all female geomancers", "GeomancerFemale"),
 
-            // Dragoons
-            ["Dragoon_Male"] = new JobMetadata("Generic Characters", "Male Dragoon", "Color scheme for all male dragoons", "DragoonMale"),
-            ["Dragoon_Female"] = new JobMetadata("Generic Characters", "Female Dragoon", "Color scheme for all female dragoons", "DragoonFemale"),
+                // Dragoons
+                ["Dragoon_Male"] = new JobMetadata("Generic Characters", "Male Dragoon", "Color scheme for all male dragoons", "DragoonMale"),
+                ["Dragoon_Female"] = new JobMetadata("Generic Characters", "Female Dragoon", "Color scheme for all female dragoons", "DragoonFemale"),
 
-            // Samurai
-            ["Samurai_Male"] = new JobMetadata("Generic Characters", "Male Samurai", "Color scheme for all male samurai", "SamuraiMale"),
-            ["Samurai_Female"] = new JobMetadata("Generic Characters", "Female Samurai", "Color scheme for all female samurai", "SamuraiFemale"),
+                // Samurai
+                ["Samurai_Male"] = new JobMetadata("Generic Characters", "Male Samurai", "Color scheme for all male samurai", "SamuraiMale"),
+                ["Samurai_Female"] = new JobMetadata("Generic Characters", "Female Samurai", "Color scheme for all female samurai", "SamuraiFemale"),
 
-            // Ninjas
-            ["Ninja_Male"] = new JobMetadata("Generic Characters", "Male Ninja", "Color scheme for all male ninjas", "NinjaMale"),
-            ["Ninja_Female"] = new JobMetadata("Generic Characters", "Female Ninja", "Color scheme for all female ninjas", "NinjaFemale"),
+                // Ninjas
+                ["Ninja_Male"] = new JobMetadata("Generic Characters", "Male Ninja", "Color scheme for all male ninjas", "NinjaMale"),
+                ["Ninja_Female"] = new JobMetadata("Generic Characters", "Female Ninja", "Color scheme for all female ninjas", "NinjaFemale"),
 
-            // Calculators
-            ["Calculator_Male"] = new JobMetadata("Generic Characters", "Male Calculator", "Color scheme for all male calculators", "CalculatorMale"),
-            ["Calculator_Female"] = new JobMetadata("Generic Characters", "Female Calculator", "Color scheme for all female calculators", "CalculatorFemale"),
+                // Calculators
+                ["Calculator_Male"] = new JobMetadata("Generic Characters", "Male Calculator", "Color scheme for all male calculators", "CalculatorMale"),
+                ["Calculator_Female"] = new JobMetadata("Generic Characters", "Female Calculator", "Color scheme for all female calculators", "CalculatorFemale"),
 
-            // Bards (Male only)
-            ["Bard_Male"] = new JobMetadata("Generic Characters", "Male Bard", "Color scheme for all male bards", "BardMale"),
+                // Bards (Male only)
+                ["Bard_Male"] = new JobMetadata("Generic Characters", "Male Bard", "Color scheme for all male bards", "BardMale"),
 
-            // Dancers (Female only)
-            ["Dancer_Female"] = new JobMetadata("Generic Characters", "Female Dancer", "Color scheme for all female dancers", "DancerFemale"),
+                // Dancers (Female only)
+                ["Dancer_Female"] = new JobMetadata("Generic Characters", "Female Dancer", "Color scheme for all female dancers", "DancerFemale"),
 
-            // Mimes
-            ["Mime_Male"] = new JobMetadata("Generic Characters", "Male Mime", "Color scheme for all male mimes", "MimeMale"),
-            ["Mime_Female"] = new JobMetadata("Generic Characters", "Female Mime", "Color scheme for all female mimes", "MimeFemale"),
+                // Mimes
+                ["Mime_Male"] = new JobMetadata("Generic Characters", "Male Mime", "Color scheme for all male mimes", "MimeMale"),
+                ["Mime_Female"] = new JobMetadata("Generic Characters", "Female Mime", "Color scheme for all female mimes", "MimeFemale"),
 
-            // Chemists
-            ["Chemist_Male"] = new JobMetadata("Generic Characters", "Male Chemist", "Color scheme for all male chemists", "ChemistMale"),
-            ["Chemist_Female"] = new JobMetadata("Generic Characters", "Female Chemist", "Color scheme for all female chemists", "ChemistFemale"),
+                // Chemists
+                ["Chemist_Male"] = new JobMetadata("Generic Characters", "Male Chemist", "Color scheme for all male chemists", "ChemistMale"),
+                ["Chemist_Female"] = new JobMetadata("Generic Characters", "Female Chemist", "Color scheme for all female chemists", "ChemistFemale"),
 
-            // WotL Jobs - Dark Knight
-            ["DarkKnight_Male"] = new JobMetadata("WotL Jobs", "Male Dark Knight", "Color scheme for all male dark knights", "DarkKnightMale"),
-            ["DarkKnight_Female"] = new JobMetadata("WotL Jobs", "Female Dark Knight", "Color scheme for all female dark knights", "DarkKnightFemale"),
+                // WotL Jobs, Dark Knight
+                ["DarkKnight_Male"] = new JobMetadata("WotL Jobs", "Male Dark Knight", "Color scheme for all male dark knights", "DarkKnightMale"),
+                ["DarkKnight_Female"] = new JobMetadata("WotL Jobs", "Female Dark Knight", "Color scheme for all female dark knights", "DarkKnightFemale"),
 
-            // WotL Jobs - Onion Knight
-            ["OnionKnight_Male"] = new JobMetadata("WotL Jobs", "Male Onion Knight", "Color scheme for all male onion knights", "OnionKnightMale"),
-            ["OnionKnight_Female"] = new JobMetadata("WotL Jobs", "Female Onion Knight", "Color scheme for all female onion knights", "OnionKnightFemale"),
+                // WotL Jobs, Onion Knight
+                ["OnionKnight_Male"] = new JobMetadata("WotL Jobs", "Male Onion Knight", "Color scheme for all male onion knights", "OnionKnightMale"),
+                ["OnionKnight_Female"] = new JobMetadata("WotL Jobs", "Female Onion Knight", "Color scheme for all female onion knights", "OnionKnightFemale"),
 
             };
 
-            // Monsters: each registered family contributes 3 tier entries (palettes 0/1/2 of one
+            // Monsters, each registered family contributes 3 tier entries (palettes 0/1/2 of one
             // bin), applied by MonsterThemeCoordinator (not the generic _Male/_Female sprite-swap
             // path). Seeded from MonsterThemeRegistry so adding a family needs no Config.cs edits.
             foreach (var fam in Services.MonsterThemeRegistry.Families)
@@ -483,7 +483,7 @@ namespace FFTColorCustomizer.Configuration
         }
 
         // Monster tier themes (Chocobo_RankI, Goblin_RankII, …) are not exposed as individual C#
-        // properties — they're driven entirely by MonsterThemeRegistry and accessed via
+        // properties, they're driven entirely by MonsterThemeRegistry and accessed via
         // GetJobTheme/SetJobTheme. Serialization is handled by _jobMetadata (see BuildJobMetadata).
 
         // Story Character Properties (string-based themes)

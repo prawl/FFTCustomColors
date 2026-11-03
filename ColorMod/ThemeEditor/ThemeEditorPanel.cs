@@ -18,12 +18,12 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _spritePreviewLabel;
         private Label _colorSelectionLabel;
         private RotatableSpritePictureBox _spritePreview;
-        // Compare feature — shows the unmodified sprite next to the live one
+        // Compare feature, shows the unmodified sprite next to the live one
         // so the user can see at a glance what their edits have changed.
         private Label _originalSpritePreviewLabel;
         private RotatableSpritePictureBox _originalSpritePreview;
         private CheckBox _showOriginalCheckbox;
-        // "Animate" walk-cycle preview, see CC-36.
+        // The Animate walk preview.
         private CheckBox _animateCheckbox;
         private WalkPreviewAnimator _walkAnimator;
         private Label _themeNameLabel;
@@ -32,20 +32,18 @@ namespace FFTColorCustomizer.ThemeEditor
         private Button _resetButton;
         private Panel _sectionColorPickersPanel;
         private Label _warningLabel;
-        private string? _mappingsDirectory;
-        private string? _spritesDirectory;
-        private string? _modsDirectory;
-        private Dictionary<string, string> _displayNameToJobName = new();
-        private Dictionary<string, bool> _isStoryCharacter = new();
-        private Dictionary<string, bool> _isWotLCharacter = new();
-        private Dictionary<string, bool> _isMonster = new();
-        private Dictionary<string, bool> _isNpcCharacter = new();
+        private readonly string? _mappingsDirectory;
+        private readonly string? _spritesDirectory;
+        private readonly Dictionary<string, string> _displayNameToJobName = new();
+        private readonly Dictionary<string, bool> _isStoryCharacter = new();
+        private readonly Dictionary<string, bool> _isWotLCharacter = new();
+        private readonly Dictionary<string, bool> _isMonster = new();
+        private readonly Dictionary<string, bool> _isNpcCharacter = new();
         // Monster display name (e.g. "Black Chocobo") -> bin palette index (0/1/2) for that
         // rank. A monster family's three ranks share one bin as palettes 0/1/2, so this is what
         // lets the editor actually reach ranks II and III instead of always editing palette 0.
-        // Any display name missing from here (every non-monster template) defaults to 0. CC-27.
-        private Dictionary<string, int> _monsterPaletteIndex = new();
-        private bool _suppressColorChangedEvents;
+        // Any display name missing from here (every non-monster template) defaults to 0.
+        private readonly Dictionary<string, int> _monsterPaletteIndex = new();
 
         public SectionMapping? CurrentMapping { get; private set; }
         public int CurrentSpriteDirection { get; private set; } = 5; // Default to SW (Southwest)
@@ -55,7 +53,7 @@ namespace FFTColorCustomizer.ThemeEditor
         // untouched palette regardless of what the user has edited.
         public PaletteModifier? OriginalPaletteModifier { get; private set; }
 
-        // Sprite preview sizes. Both previews stay full-size at all times —
+        // Sprite preview sizes. Both previews stay full-size at all times,
         // when Compare is on they stack vertically (Original above Modified)
         // so neither loses pixel detail. Class-level so InitializeComponents
         // and OnShowOriginalCheckedChanged share the same numbers.
@@ -93,7 +91,6 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             _mappingsDirectory = mappingsDirectory;
             _spritesDirectory = spritesDirectory;
-            _modsDirectory = modsDirectory;
             MinimumSize = new System.Drawing.Size(0, 550);
             Height = 550; // Set initial height so panel sizing works
             InitializeComponents();
@@ -110,7 +107,7 @@ namespace FFTColorCustomizer.ThemeEditor
             const int templateLabelWidth = 85;  // Width for "Template:" label
             const int themeNameLabelWidth = 105; // Width for "Theme Name:" label
 
-            // === ROW 1: Template dropdown + Theme Name + Buttons ===
+            // === ROW 1, Template dropdown + Theme Name + Buttons ===
             _templateLabel = new Label
             {
                 Name = "TemplateLabel",
@@ -141,7 +138,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 var availableJobs = SectionMappingLoader.GetAvailableJobs(_mappingsDirectory);
                 foreach (var job in availableJobs)
                 {
-                    // Skip WotL jobs - they're listed in their own section
+                    // Skip WotL jobs, they're listed in their own section
                     if (wotlJobs.Contains(job))
                         continue;
 
@@ -175,8 +172,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 }
 
                 // Add Monsters section (positioned before WotL Characters). One dropdown entry
-                // per (family, rank) — 16 families x 3 ranks — not one per family, or ranks II
-                // and III are unreachable. See CC-27.
+                // per (family, rank), 16 families x 3 ranks, not one per family, or ranks II
+                // and III are unreachable.
                 var monsters = SectionMappingLoader.GetAvailableMonsters(_mappingsDirectory);
                 var monsterEntries = MonsterEditorEntries.Build(monsters);
                 if (monsterEntries.Count > 0)
@@ -186,7 +183,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     {
                         _templateDropdown.Items.Add(entry.DisplayName);
 
-                        // Maps to the FAMILY, not the rank — that's what keeps mapping-file
+                        // Maps to the FAMILY, not the rank, that's what keeps mapping-file
                         // lookup, sprite-path resolution and the theme save key unchanged.
                         _displayNameToJobName[entry.DisplayName] = entry.Family;
                         _isStoryCharacter[entry.DisplayName] = false;
@@ -289,7 +286,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _resetButton.FlatAppearance.BorderColor = UIConfiguration.ResetButtonBorder;
             _resetButton.Click += OnResetAllClick;
 
-            // Warning label (below the Save button, row 2) - positioned to the left to avoid clipping
+            // Warning label (below the Save button, row 2), positioned to the left to avoid clipping
             const int row2Top = 40;
             _warningLabel = new Label
             {
@@ -301,7 +298,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 ForeColor = Color.FromArgb(255, 200, 50)
             };
 
-            // === ROW 3: Section labels above the content panels ===
+            // === ROW 3, Section labels above the content panels ===
             const int row3Top = 65;
             const int labelHeight = 20;
             const int contentTop = row3Top + labelHeight + 5; // 5px gap between label and content
@@ -324,9 +321,9 @@ namespace FFTColorCustomizer.ThemeEditor
                 AutoSize = true
             };
 
-            // === ROW 4: Sprite preview (left) + Color pickers panel (right) ===
+            // === ROW 4, Sprite preview (left) + Color pickers panel (right) ===
             // Rotation arrows are painted on the preview itself (overlay) and
-            // dispatched by left-third / right-third clicks — same pattern as
+            // dispatched by left-third / right-third clicks, same pattern as
             // the class-preview carousel.
             _spritePreview = new RotatableSpritePictureBox
             {
@@ -341,10 +338,10 @@ namespace FFTColorCustomizer.ThemeEditor
             _spritePreview.RotateLeftRequested += OnRotateLeft;
             _spritePreview.RotateRightRequested += OnRotateRight;
 
-            // Compare feature: a parallel "Original" preview (hidden by default)
+            // Compare feature, a parallel "Original" preview (hidden by default)
             // and a checkbox that toggles it on. When on, both previews shrink
             // so they fit side-by-side in the same column. Both share the same
-            // rotation cycle — clicking either one rotates both.
+            // rotation cycle, clicking either one rotates both.
             _originalSpritePreviewLabel = new Label
             {
                 Name = "OriginalSpritePreviewLabel",
@@ -384,8 +381,8 @@ namespace FFTColorCustomizer.ThemeEditor
             var compareTip = new ToolTip();
             compareTip.SetToolTip(_showOriginalCheckbox, "Show the original sprite next to your modified version for comparison");
 
-            // "Animate" plays the walk cycle for the current facing (CC-36; monsters, Chocobo
-            // and Construct 8 joined in CC-46). Disabled until a template with a derivable
+            // Animate plays the walk cycle for the current facing, monsters, Chocobo and
+            // Construct 8 included. Disabled until a template with a derivable
             // walk cycle (an HD sheet one of the four rigs can address) is selected.
             _animateCheckbox = new CheckBox
             {
@@ -403,7 +400,7 @@ namespace FFTColorCustomizer.ThemeEditor
             var animateTip = new ToolTip();
             animateTip.SetToolTip(_animateCheckbox, "Play the walk animation for the current facing");
 
-            // Color pickers panel - extends to bottom
+            // Color pickers panel, extends to bottom
             _sectionColorPickersPanel = new Panel
             {
                 Name = "SectionColorPickersPanel",
@@ -433,7 +430,7 @@ namespace FFTColorCustomizer.ThemeEditor
             // Set initial sizes for dynamic panels
             UpdateColorPickersPanelSize();
 
-            // Owns the walk-cycle timer/phase/frame caches (CC-36). Must be constructed after
+            // Owns the walk-cycle timer/phase/frame caches. Must be constructed after
             // both preview boxes exist (its paint callbacks target them) and before the default
             // selection below, since OnTemplateSelected -> UpdateAnimateCheckboxForTemplate
             // reaches into it.
@@ -470,14 +467,14 @@ namespace FFTColorCustomizer.ThemeEditor
             const int labelHeight = 20;
             const int contentTop = row3Top + labelHeight + 5; // Match the label offset
 
-            // Width: extend to right edge
+            // Width, extend to right edge
             var newWidth = Width - colorPickersLeft - padding;
             if (newWidth > 0)
             {
                 _sectionColorPickersPanel.Width = newWidth;
             }
 
-            // Height: extend to bottom edge
+            // Height, extend to bottom edge
             var newHeight = Height - contentTop - padding;
             if (newHeight > 0)
             {
@@ -505,7 +502,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 return $"{jobClass} ({gender})";
             }
 
-            // Fallback: just replace underscores with spaces
+            // Fallback, just replace underscores with spaces
             return jobName.Replace("_", " ");
         }
 
@@ -582,7 +579,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     {
                         PaletteModifier = LoadRankAwareModifier(spritePath);
 
-                        // Compare baseline — second loader on the same template,
+                        // Compare baseline, second loader on the same template,
                         // never mutated. Painting the Original side just calls
                         // OriginalPaletteModifier.GetPreview(direction).
                         OriginalPaletteModifier = LoadRankAwareModifier(spritePath);
@@ -657,7 +654,7 @@ namespace FFTColorCustomizer.ThemeEditor
             foreach (var section in CurrentMapping.Sections)
             {
                 // Skip sections that are the target of another section's link,
-                // UNLESS this section also links out (bidirectional - first one wins)
+                // UNLESS this section also links out (bidirectional, first one wins)
                 var linkerSection = Array.Find(CurrentMapping.Sections, s => s.LinkedTo == section.Name && s != section);
                 if (linkerSection != null && section.LinkedTo == null)
                     continue;
@@ -769,7 +766,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 return;
 
             // Load the original sprite file to get the original palette colors, at whichever
-            // rank is currently selected (LoadRankAwareModifier — see CC-27).
+            // rank is currently selected (LoadRankAwareModifier).
             var originalPalette = LoadRankAwareModifier(spritePath);
 
             // Restore each index in this section from the original palette
@@ -779,7 +776,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 PaletteModifier.CopyPaletteIndex(index, originalPalette);
             }
 
-            // See OnColorPickerChanged: reset also changes the live palette.
+            // See OnColorPickerChanged, reset also changes the live palette.
             _walkAnimator?.InvalidateModifiedFrames();
 
             // Update the preview
@@ -842,7 +839,7 @@ namespace FFTColorCustomizer.ThemeEditor
         }
 
         // Layout swap when Compare is toggled. Both previews stay full-size.
-        // The Modified preview NEVER MOVES — it stays in the top slot the user
+        // The Modified preview NEVER MOVES, it stays in the top slot the user
         // has been looking at the whole time. When Compare is ON, the label
         // changes from "Sprite Preview" to "Modified", and the Original drops
         // in beneath it (with its own "Original" label between them). The
@@ -897,8 +894,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 _originalSpritePreview.Visible = false;
 
                 // Snap MinimumSize back to single-preview baseline so the panel
-                // can shrink again. Don't shrink Height — the user may have
-                // resized it deliberately.
+                // can shrink again. Don't shrink Height, the user may have
+                // resized it on purpose.
                 MinimumSize = new System.Drawing.Size(MinimumSize.Width, 550);
             }
         }
@@ -923,10 +920,10 @@ namespace FFTColorCustomizer.ThemeEditor
         }
 
         /// <summary>
-        /// Collects the Reset All confirmation decision. A real yes/no MessageBox by default —
+        /// Collects the Reset All confirmation decision. A real yes/no MessageBox by default,
         /// swap it out in tests, which can't drive a real modal dialog, so the reload behind it
         /// (<see cref="OnResetAllClick"/> calling <see cref="ReloadModifiersFromCurrentSprite"/>)
-        /// stays provably reachable through the real button click. See CC-27.
+        /// stays provably reachable through the real button click.
         /// </summary>
         internal Func<bool> ConfirmResetAll = () => MessageBox.Show(
             "Are you sure you want to reset all colors back to default? This will save immediately.",
@@ -934,8 +931,8 @@ namespace FFTColorCustomizer.ThemeEditor
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question) == DialogResult.Yes;
 
-        /// <summary>Test seam: exposes the walk-cycle animator's state (phase, frame caches,
-        /// running flag) that isn't otherwise reachable from outside the panel. See CC-36.</summary>
+        /// <summary>Test seam, exposes the walk-cycle animator's state (phase, frame caches,
+        /// running flag) that isn't otherwise reachable from outside the panel.</summary>
         internal WalkPreviewAnimator WalkAnimatorForTests => _walkAnimator;
 
         private void OnResetAllClick(object? sender, EventArgs e)
@@ -962,9 +959,9 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// Reloads both <see cref="PaletteModifier"/> and <see cref="OriginalPaletteModifier"/>
         /// from the current selection's sprite, each rank aware via <see cref="LoadRankAwareModifier"/>.
-        /// This is the seam <see cref="OnResetAllClick"/> calls after its confirmation dialog — a
+        /// This is the seam <see cref="OnResetAllClick"/> calls after its confirmation dialog, a
         /// separate, directly testable method so the reload logic doesn't hide behind a modal
-        /// MessageBox that can't be driven end to end in a test. See CC-27.
+        /// MessageBox that can't be driven end to end in a test.
         /// </summary>
         private void ReloadModifiersFromCurrentSprite()
         {
@@ -974,7 +971,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
             PaletteModifier = LoadRankAwareModifier(spritePath);
 
-            // Compare baseline — keep this in sync with the load site above.
+            // Compare baseline, keep this in sync with the load site above.
             OriginalPaletteModifier = LoadRankAwareModifier(spritePath);
 
             _walkAnimator?.InvalidateFrames();
@@ -1003,7 +1000,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <see cref="PaletteModifier.PaletteIndex"/> set for whichever rank the currently
         /// selected dropdown entry maps to (0 for every non-monster template). Every reload
         /// site (initial load, per-section reset, reset-all) must go through this single
-        /// helper, or a monster's rank II/III edit silently reverts to rank I's colours. CC-27.
+        /// helper, or a monster's rank II/III edit silently reverts to rank I's colours.
         /// </summary>
         private PaletteModifier LoadRankAwareModifier(string spritePath)
         {

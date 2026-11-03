@@ -1,5 +1,6 @@
 namespace FFTColorCustomizer.Configuration
 {
+    /// <summary>Hue, saturation and lightness shifts for one Ramza chapter.</summary>
     public class RamzaChapterHslSettings
     {
         public int HueShift { get; set; }

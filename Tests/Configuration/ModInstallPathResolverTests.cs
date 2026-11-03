@@ -7,7 +7,7 @@ using Xunit;
 namespace FFTColorCustomizer.Tests
 {
     /// <summary>
-    /// CC-12: the Reloaded-II Configure Mod button flow used to hard-code the sprite target
+    /// the Reloaded-II Configure Mod button flow used to hard-code the sprite target
     /// as &lt;reloadedRoot&gt;/Mods/FFTColorCustomizer, which is wrong for every release install
     /// (paxtrick.fft.colorcustomizer, or Vortex's FFTColorCustomizer-56-x-y-z-* names): the
     /// config saved, the UI reported success, and zero sprites were copied. The resolver must

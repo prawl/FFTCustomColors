@@ -6,7 +6,7 @@ using System.IO.Compression;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Modifies colors in tex files used by Ramza characters
+    /// Modifies colors in tex files used by Ramza characters.
     /// </summary>
     public class TexFileModifier
     {
@@ -92,7 +92,7 @@ namespace FFTColorCustomizer.Utilities
                 }
             }
 
-            // Default: no change
+            // Default, no change
             return (r, g, b);
         }
 

@@ -1,7 +1,7 @@
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Metadata for a job/character configuration
+    /// Metadata for a job/character configuration.
     /// </summary>
     public class JobMetadata
     {

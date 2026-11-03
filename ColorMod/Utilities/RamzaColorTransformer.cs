@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Transforms colors in Ramza sprites to match different themes
+    /// Transforms colors in Ramza sprites to match different themes.
     /// </summary>
     public class RamzaColorTransformer
     {
@@ -208,19 +208,19 @@ namespace FFTColorCustomizer.Utilities
             // Different armor detection for each chapter
             if (characterName == "RamzaChapter1")
             {
-                // Chapter 1: Blue armor
+                // Chapter 1, Blue armor
                 return (color.B > color.R && color.B > color.G) ||
                        (color.R < 100 && color.G < 140 && color.B > 70);
             }
             else if (characterName == "RamzaChapter2")
             {
-                // Chapter 2-3: Purple armor
+                // Chapter 2-3, Purple armor
                 return (color.R > 30 && color.B > 50 && color.B > color.G) ||
                        (color.R > 40 && color.R < 130 && color.B > 70);
             }
             else // Chapter 3-4
             {
-                // Chapter 3-4: Teal armor
+                // Chapter 3-4, Teal armor
                 return (color.B > color.R && color.G > color.R * 0.7) ||
                        (color.G > 60 && color.B > 70 && color.R < 50);
             }

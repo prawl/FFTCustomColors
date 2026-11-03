@@ -33,7 +33,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 File.Delete(_testBinPath);
         }
 
-        // --- CC-27: the editor must be able to reach ranks II and III, not just rank I ---
+        // --- The editor must be able to reach ranks II and III, not just rank I ---
         //
         // A monster family's three ranks live in ONE bin as palettes 0/1/2. The theme editor
         // could only ever address palette 0, so designing a look for a Black Chocobo silently
@@ -397,7 +397,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         /// Pins the saved-theme format contract: a flat 512 byte block (16 palettes x 32 bytes)
         /// regardless of which rank is selected. Nothing else in the suite asserts this against
         /// a modifier that actually loaded a real template — MonsterRecolor.ApplyUserPaletteSection
-        /// reads this length as a hard assumption. See CC-27.
+        /// reads this length as a hard assumption.
         /// </summary>
         [Fact]
         public void GetModifiedPalette_ReturnsA512ByteBlock()

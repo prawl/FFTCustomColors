@@ -8,7 +8,7 @@ using FFTColorCustomizer.Services;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Registry that uses CharacterDefinitionService for centralized character management
+    /// Registry that uses CharacterDefinitionService for centralized character management.
     /// </summary>
     public static class StoryCharacterRegistry
     {
@@ -29,7 +29,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
         /// <summary>
         /// Auto-discovers all character enums with StoryCharacter attribute
-        /// Note: After refactoring, this primarily serves as a fallback when JSON loading fails
+        /// After refactoring, this primarily serves as a fallback when JSON loading fails
         /// </summary>
         public static void AutoDiscoverCharacters(CharacterDefinitionService service)
         {
@@ -59,7 +59,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 service.AddCharacter(character);
             }
 
-            // Note: After refactoring to remove ColorScheme enums, this method will find 0 attributes
+            // After refactoring to remove ColorScheme enums, this method will find 0 attributes
             // The primary character loading now happens from StoryCharacters.json via CharacterServiceSingleton
         }
 

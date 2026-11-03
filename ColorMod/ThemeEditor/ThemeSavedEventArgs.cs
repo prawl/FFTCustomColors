@@ -14,9 +14,9 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// The dropdown entry the user actually picked (e.g. "Bonesnatch (rank 2)"). For a
         /// monster, <see cref="JobName"/> is the FAMILY key ("Skeleton") since the save stays
-        /// family scoped by design — this is what a confirmation message should name instead.
+        /// family scoped, this is what a confirmation message should name instead.
         /// Defaults to <see cref="JobName"/> for every existing caller that doesn't pass one.
-        /// See CC-27.
+        ///
         /// </summary>
         public string DisplayName { get; }
 

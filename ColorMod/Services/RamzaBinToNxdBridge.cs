@@ -12,7 +12,7 @@ namespace FFTColorCustomizer.Services
     {
         /// <summary>
         /// Converts BGR555 palette bytes (from SPR file) to CLUTData format (48 integers).
-        /// CLUTData is an array of 48 integers representing 16 RGB colors: [R0,G0,B0, R1,G1,B1, ...]
+        /// CLUTData is an array of 48 integers representing 16 RGB colors, [R0,G0,B0, R1,G1,B1, ...]
         /// </summary>
         /// <param name="paletteBytes">512 bytes (256 colors × 2 bytes per color in BGR555 format)</param>
         /// <returns>48 integers representing 16 colors in RGB format</returns>
@@ -127,11 +127,11 @@ namespace FFTColorCustomizer.Services
 
         /// <summary>
         /// Converts BGR555 format (2 bytes) to a Color.
-        /// BGR555: GGGBBBBB 0RRRRRGG (low byte, high byte)
+        /// BGR555, GGGBBBBB 0RRRRRGG (low byte, high byte)
         /// </summary>
         private Color Bgr555ToColor(byte low, byte high)
         {
-            // BGR555: bits are laid out as 0BBBBBGG GGGRRRRR when read as little-endian 16-bit
+            // BGR555, bits are laid out as 0BBBBBGG GGGRRRRR when read as little-endian 16-bit
             ushort value = (ushort)(low | (high << 8));
 
             int r = (value & 0x1F) * 255 / 31;

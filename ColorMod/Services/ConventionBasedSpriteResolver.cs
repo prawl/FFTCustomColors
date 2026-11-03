@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Resolves sprite files based on naming conventions, eliminating the need for hardcoded mappings
+    /// Resolves sprite files based on naming conventions, eliminating the need for hardcoded mappings.
     /// </summary>
     public class ConventionBasedSpriteResolver
     {
@@ -21,8 +21,8 @@ namespace FFTColorCustomizer.Services
         /// <summary>
         /// Resolves the sprite file path for a character/theme combination
         /// Follows conventions:
-        /// 1. Directory: sprites_[character]_[theme]/battle_[sprite]_spr.bin
-        /// 2. Flat file: battle_[sprite]_[theme]_spr.bin
+        /// 1. Directory, sprites_[character]_[theme]/battle_[sprite]_spr.bin
+        /// 2. Flat file, battle_[sprite]_[theme]_spr.bin
         /// </summary>
         public string? ResolveSpriteTheme(string characterName, string spriteName, string themeName)
         {

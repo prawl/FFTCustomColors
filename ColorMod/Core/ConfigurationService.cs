@@ -8,7 +8,7 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Service for managing mod configuration
+    /// Service for managing mod configuration.
     /// </summary>
     public class ConfigurationService : IConfigurationService
     {
@@ -97,7 +97,7 @@ namespace FFTColorCustomizer.Core
             if (config == null)
                 return false;
 
-            // Basic validation - ensure all string properties have non-null values
+            // Basic validation, ensure all string properties have non-null values
             var properties = typeof(Config).GetProperties();
             foreach (var property in properties)
             {

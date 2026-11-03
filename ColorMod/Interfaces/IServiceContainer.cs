@@ -3,7 +3,7 @@ using System;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Defines a dependency injection container for service registration and resolution
+    /// Defines a dependency injection container for service registration and resolution.
     /// </summary>
     public interface IServiceContainer : IDisposable
     {

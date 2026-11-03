@@ -7,8 +7,8 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Applies every registered monster family's tier color selections by recoloring palettes
-    /// 0/1/2 of the family's sprite bin (all three ranks live in one bin). Always rebuilds each
+    /// Recolors each monster family's sprite bin to the tier colors the player chose. All three
+    /// ranks live in one bin as palettes 0, 1 and 2. Always rebuilds each
     /// bin from its original copy in sprites_original/ so re-applies are idempotent and tiers flip
     /// back to "original" cleanly. Writes to the base unit/ folder (FFTPack serves from there after
     /// a restart). See docs/ADDING_A_MONSTER.md.
@@ -77,7 +77,7 @@ namespace FFTColorCustomizer.Services
                 }
             }
 
-            // Always write: rebuilding from the original means flipping a tier back to "original"
+            // Always write, rebuilding from the original means flipping a tier back to "original"
             // restores its palette on the next apply.
             var destFile = Path.Combine(_unitPath, family.Bin);
             File.WriteAllBytes(destFile, data);

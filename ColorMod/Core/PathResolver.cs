@@ -8,7 +8,7 @@ using FFTColorCustomizer.Services;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Implementation of IPathResolver for centralized path management
+    /// Implementation of IPathResolver for centralized path management.
     /// </summary>
     public class PathResolver : IPathResolver
     {

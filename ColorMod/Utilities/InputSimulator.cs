@@ -6,6 +6,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Utilities
 {
+    /// <summary>Sends synthetic key presses to the game window.</summary>
     public interface IInputSimulator
     {
         bool SendKeyPress(int vkCode);

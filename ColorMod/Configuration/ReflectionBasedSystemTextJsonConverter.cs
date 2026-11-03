@@ -7,8 +7,7 @@ using System.Text.Json.Serialization;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Reflection-based System.Text.Json converter that automatically handles all story character properties
-    /// without requiring manual updates for each new character
+    /// System.Text.Json converter that reads and writes every story character property by reflection.
     /// </summary>
     public class ReflectionBasedSystemTextJsonConverter : JsonConverter<Config>
     {

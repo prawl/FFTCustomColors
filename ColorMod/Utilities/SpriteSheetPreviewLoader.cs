@@ -42,7 +42,7 @@ namespace FFTColorCustomizer.Utilities
                     // Themed Ramza sheets are exported as non-indexed 24bpp with their
                     // transparent background baked to solid black. Recover transparency from
                     // the matching indexed "original" sheet, which still carries the index-0
-                    // background mask. (Indexed themed BMPs ignore the mask — see
+                    // background mask. (Indexed themed BMPs ignore the mask, see
                     // BmpPaletteSwapper.LoadWithTransparencyMask.)
                     var maskImagesDir = Path.Combine(_basePath, "Images", characterName, "original");
                     var maskBmpPath = Directory.Exists(maskImagesDir)
@@ -142,7 +142,7 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// Returns true if the mod folder layout contains a sprites_&lt;char&gt;_&lt;theme&gt;/ directory
-        /// with at least one .bin file — i.e. a built-in themed sprite ready for palette swap.
+        /// with at least one .bin file, i.e. a built-in themed sprite ready for palette swap.
         /// Returns false for "original" (no themed bin needed), for user themes (their data is
         /// in a user-palette file, not a sprites_*/ folder), and for unknown themes.
         ///
@@ -164,7 +164,7 @@ namespace FFTColorCustomizer.Utilities
 
         private static string FindUnitPath(string basePath)
         {
-            // Mod folder layout: <basePath>/FFTIVC/data/enhanced/fftpack/unit/
+            // Mod folder layout, <basePath>/FFTIVC/data/enhanced/fftpack/unit/
             var direct = Path.Combine(basePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             if (Directory.Exists(direct))
                 return direct;
@@ -193,7 +193,7 @@ namespace FFTColorCustomizer.Utilities
                 return prefixed.Length > 0 ? prefixed[0] : null;
             }
 
-            // Non-Ramza: prefer an explicit "sprite_sheet" if present, else fall back to
+            // Non-Ramza, prefer an explicit "sprite_sheet" if present, else fall back to
             // the first "*_hd.*" file we find (Sprite Toolkit naming).
             var generic = new[]
             {

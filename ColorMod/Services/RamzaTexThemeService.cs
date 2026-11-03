@@ -6,7 +6,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Service for applying themes to Ramza tex files
+    /// Service for applying themes to Ramza tex files.
     /// </summary>
     public class RamzaTexThemeService
     {

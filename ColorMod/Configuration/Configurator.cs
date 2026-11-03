@@ -6,7 +6,7 @@ using Reloaded.Mod.Interfaces;
 using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration
 {
-    // NOTE: This class implements IConfiguratorV3 so Reloaded-II shows its
+    // This class implements IConfiguratorV3 so Reloaded-II shows its
     // "Configure Mod" button for our mod. The button and the in-game F1 hotkey
     // both route through TryRunCustomConfiguration. If the user clicks the button
     // before launching the game, TryRunCustomConfiguration short-circuits with a
@@ -14,7 +14,7 @@ namespace FFTColorCustomizer.Configuration
     // because applying themes without a live game just produces a stale config.
     public class Configurator : IConfiguratorV3
     {
-        private static ConfiguratorMixin _configuratorMixin = new ConfiguratorMixin();
+        private static readonly ConfiguratorMixin _configuratorMixin = new ConfiguratorMixin();
 
         /// <summary>
         /// The folder where the modification files are stored.
@@ -233,7 +233,7 @@ namespace FFTColorCustomizer.Configuration
                     var saveConfigManager = new ConfigurationManager(saveConfigPath);
                     saveConfigManager.SaveConfig(config);
 
-                    // Don't call IConfigurable.Save here - it might trigger unwanted behavior
+                    // Don't call IConfigurable.Save here, it might trigger unwanted behavior
                     // The ConfigurationManager.SaveConfig already saved the file
                     ModLogger.Log("Config saved via ConfigurationManager");
 
@@ -243,9 +243,9 @@ namespace FFTColorCustomizer.Configuration
                         ModLogger.Log("Applying sprite changes for generic characters...");
 
                         // The mod install dir is wherever OUR DLL is actually running from;
-                        // never guess a folder name from the User config path (CC-12: the old
-                        // hard-coded Mods\FFTColorCustomizer guess silently copied zero sprites
-                        // for every release install, which is not named that).
+                        // never guess a folder name from the User config path. The old hard coded
+                        // Mods\FFTColorCustomizer guess silently copied zero sprites for every
+                        // release install, which is not named that.
                         string assemblyDir = Path.GetDirectoryName(
                             System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty;
                         string actualModPath = ModInstallPathResolver.Resolve(assemblyDir, ModFolder);

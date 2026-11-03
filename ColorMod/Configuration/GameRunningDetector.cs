@@ -6,7 +6,7 @@ namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Detects whether one of FFT's supported executables is currently running.
-    /// Used to gate the Reloaded-II "Configure Mod" button — applying themes when
+    /// Used to gate the Reloaded-II "Configure Mod" button, applying themes when
     /// the game isn't live just produces a stale config that won't be visible
     /// until the next launch, which surprises users.
     /// </summary>
@@ -32,7 +32,7 @@ namespace FFTColorCustomizer.Configuration
         }
 
         /// <summary>
-        /// Test seam: pass a custom probe to decide if a given process name is live.
+        /// Test seam, pass a custom probe to decide if a given process name is live.
         /// </summary>
         public static bool IsGameRunning(Func<string, bool> processProbe)
         {

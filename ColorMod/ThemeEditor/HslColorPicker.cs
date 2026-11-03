@@ -55,7 +55,7 @@ namespace FFTColorCustomizer.ThemeEditor
             const int labelWidth = 70;
             const int padding = 10;
 
-            // Section header label - larger, bold, white, centered for visibility
+            // Section header label, larger, bold, white, centered for visibility
             _sectionHeaderLabel = new Label
             {
                 Name = "SectionHeaderLabel",
@@ -70,7 +70,7 @@ namespace FFTColorCustomizer.ThemeEditor
             };
             _sectionHeaderLabel.Height = _sectionHeaderLabel.Font.Height + _sectionHeaderLabel.Padding.Vertical;
 
-            // Reset button - positioned below sliders, to the right of Paste button
+            // Reset button, positioned below sliders, to the right of Paste button
             _resetButton = new Button
             {
                 Name = "ResetButton",
@@ -179,7 +179,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
 
-            // Color preview swatch - positioned below sliders, aligned with slider start
+            // Color preview swatch, positioned below sliders, aligned with slider start
             _colorPreviewSwatch = new Panel
             {
                 Name = "ColorPreviewSwatch",
@@ -190,7 +190,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 BorderStyle = BorderStyle.FixedSingle
             };
 
-            // Hex color input - positioned next to the swatch
+            // Hex color input, positioned next to the swatch
             _hexInput = new TextBox
             {
                 Name = "HexInput",
@@ -200,7 +200,7 @@ namespace FFTColorCustomizer.ThemeEditor
             };
             _hexInput.TextChanged += OnHexInputTextChanged;
 
-            // Copy button - positioned next to hex input
+            // Copy button, positioned next to hex input
             _copyButton = new Button
             {
                 Name = "CopyButton",
@@ -212,7 +212,7 @@ namespace FFTColorCustomizer.ThemeEditor
             };
             _copyButton.Click += OnCopyClick;
 
-            // Paste button - positioned next to copy button
+            // Paste button, positioned next to copy button
             _pasteButton = new Button
             {
                 Name = "PasteButton",

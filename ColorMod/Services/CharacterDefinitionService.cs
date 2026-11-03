@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>Holds the character definitions and answers lookups by name and sprite.</summary>
     public class CharacterDefinitionService
     {
         private readonly List<CharacterDefinition> _characters = new List<CharacterDefinition>();

@@ -3,8 +3,8 @@ using System.Drawing;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Builds walk-cycle preview frames for the monster rigs (CC-46) by compositing the
-    /// per-beat tile draws <see cref="MonsterWalkCycle"/> specifies. The humanoid rigs keep
+    /// Builds the walk preview frames for the monster rigs from per beat tile draws.
+    /// <see cref="MonsterWalkCycle"/> specifies them. The humanoid rigs keep
     /// their own compositor (<see cref="WalkFrameCompositor"/>): humanoid beats are a body
     /// cell plus two arm boxes, monster beats are a plain back-to-front tile list, and the
     /// two shapes share nothing but the mirroring rule.

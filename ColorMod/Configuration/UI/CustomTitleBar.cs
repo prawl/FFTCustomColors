@@ -3,6 +3,7 @@ using System.Windows.Forms;
 
 namespace FFTColorCustomizer.Configuration.UI
 {
+    /// <summary>Custom title bar panel with its own title, minimize and close buttons.</summary>
     public class CustomTitleBar : Panel
     {
         private readonly Form _parentForm;
@@ -32,7 +33,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 AutoSize = true
             };
 
-            // Close button - Make it more visible with white background initially
+            // Close button, Make it more visible with white background initially
             _closeButton = new Button
             {
                 Text = "✕",

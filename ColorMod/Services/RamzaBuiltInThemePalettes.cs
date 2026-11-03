@@ -15,62 +15,62 @@ namespace FFTColorCustomizer.Services
         // SELECT Key, Key2, CLUTData FROM CharCLUT WHERE Key IN (1, 2, 3) AND Key2 = 0
         private static readonly int[] OriginalChapter1Palette = new int[]
         {
-            0, 0, 0,           // 0: Transparent
-            40, 32, 32,        // 1: Dark outline
-            224, 216, 208,     // 2: Light highlights
-            40, 56, 72,        // 3: Dark blue armor
-            48, 72, 104,       // 4: Medium blue armor
-            56, 96, 128,       // 5: Light blue armor
-            80, 128, 184,      // 6: Bright blue armor
-            72, 48, 40,        // 7: Boots/leather dark
-            96, 56, 40,        // 8: Boots/leather mid
-            144, 80, 40,       // 9: Leather/brown
-            112, 64, 40,       // 10: Leather/brown mid
-            184, 120, 40,      // 11: Gold/yellow accent
-            216, 152, 72,      // 12: Gold highlight
-            160, 104, 40,      // 13: Skin shadow
-            200, 136, 80,      // 14: Skin mid
-            232, 192, 128      // 15: Skin highlight
+            0, 0, 0,           // 0 = Transparent
+            40, 32, 32,        // 1 = Dark outline
+            224, 216, 208,     // 2 = Light highlights
+            40, 56, 72,        // 3 = Dark blue armor
+            48, 72, 104,       // 4 = Medium blue armor
+            56, 96, 128,       // 5 = Light blue armor
+            80, 128, 184,      // 6 = Bright blue armor
+            72, 48, 40,        // 7 = Boots/leather dark
+            96, 56, 40,        // 8 = Boots/leather mid
+            144, 80, 40,       // 9 = Leather/brown
+            112, 64, 40,       // 10 = Leather/brown mid
+            184, 120, 40,      // 11 = Gold/yellow accent
+            216, 152, 72,      // 12 = Gold highlight
+            160, 104, 40,      // 13 = Skin shadow
+            200, 136, 80,      // 14 = Skin mid
+            232, 192, 128      // 15 = Skin highlight
         };
 
         private static readonly int[] OriginalChapter23Palette = new int[]
         {
-            0, 0, 0,           // 0: Transparent
-            40, 32, 32,        // 1: Dark outline
-            224, 216, 192,     // 2: Light highlights
-            72, 40, 88,        // 3: Dark purple armor
-            104, 72, 144,      // 4: Medium purple armor
-            144, 104, 208,     // 5: Light purple armor
-            64, 64, 56,        // 6: Gray cloth/cape
-            120, 112, 104,     // 7: Light gray cloth
-            168, 160, 152,     // 8: Lighter cloth
-            80, 32, 8,         // 9: Brown/leather dark
-            128, 56, 8,        // 10: Brown/leather
-            104, 64, 24,       // 11: Brown mid
-            160, 96, 24,       // 12: Yellow/gold
-            216, 160, 80,      // 13: Skin shadow
-            200, 128, 64,      // 14: Skin mid
-            232, 192, 128      // 15: Skin highlight
+            0, 0, 0,           // 0 = Transparent
+            40, 32, 32,        // 1 = Dark outline
+            224, 216, 192,     // 2 = Light highlights
+            72, 40, 88,        // 3 = Dark purple armor
+            104, 72, 144,      // 4 = Medium purple armor
+            144, 104, 208,     // 5 = Light purple armor
+            64, 64, 56,        // 6 = Gray cloth/cape
+            120, 112, 104,     // 7 = Light gray cloth
+            168, 160, 152,     // 8 = Lighter cloth
+            80, 32, 8,         // 9 = Brown/leather dark
+            128, 56, 8,        // 10 = Brown/leather
+            104, 64, 24,       // 11 = Brown mid
+            160, 96, 24,       // 12 = Yellow/gold
+            216, 160, 80,      // 13 = Skin shadow
+            200, 128, 64,      // 14 = Skin mid
+            232, 192, 128      // 15 = Skin highlight
         };
 
         private static readonly int[] OriginalChapter4Palette = new int[]
         {
-            0, 0, 0,           // 0: Transparent
-            40, 32, 32,        // 1: Dark outline
-            224, 216, 192,     // 2: Light highlights
-            32, 64, 88,        // 3: Dark teal armor
-            40, 96, 120,       // 4: Medium teal armor
-            64, 136, 152,      // 5: Light teal armor
-            64, 56, 56,        // 6: Gray cloth/cape
-            112, 96, 80,       // 7: Brown cloth
-            176, 160, 136,     // 8: Light cloth
-            80, 32, 8,         // 9: Brown/leather dark
-            128, 56, 8,        // 10: Brown/leather
-            104, 64, 24,       // 11: Brown mid
-            160, 96, 24,       // 12: Yellow/gold
-            216, 160, 80,      // 13: Skin shadow
-            200, 128, 64,      // 14: Skin mid
-            232, 192, 128      // 15: Skin highlight
+            0, 0, 0,           // 0 = Transparent
+            40, 32, 32,        // 1 = Dark outline
+            224, 216, 192,     // 2 = Light highlights
+            32, 64, 88,        // 3 = Dark teal armor
+            40, 96, 120,       // 4 = Medium teal armor
+            64, 136, 152,      // 5 = Light teal armor
+            64, 56, 56,        // 6 = Gray cloth/cape
+            112, 96, 80,       // 7 = Brown cloth
+            176, 160, 136,     // 8 = Light cloth
+            80, 32, 8,         // 9 = Brown/leather dark
+            128, 56, 8,        // 10 = Brown/leather
+            104, 64, 24,       // 11 = Brown mid
+            160, 96, 24,       // 12 = Yellow/gold
+            216, 160, 80,      // 13 = Skin shadow
+            200, 128, 64,      // 14 = Skin mid
+            232, 192, 128      // 15 = Skin highlight
         };
 
         public RamzaBuiltInThemePalettes()
@@ -159,9 +159,9 @@ namespace FFTColorCustomizer.Services
         /// <summary>
         /// Transforms a palette by applying theme-specific colors to armor indices.
         /// CLUTData palette indices vary by chapter:
-        /// - Chapter 1: Armor is indices 3, 4, 5, 6 (all are blue/armor colors)
-        /// - Chapter 2/3: Armor is indices 3, 4, 5 only (index 6 is gray cloth)
-        /// - Chapter 4: Armor is indices 3, 4, 5 only (index 6 is gray cloth)
+        /// - Chapter 1, Armor is indices 3, 4, 5, 6 (all are blue/armor colors)
+        /// - Chapter 2/3, Armor is indices 3, 4, 5 only (index 6 is gray cloth)
+        /// - Chapter 4, Armor is indices 3, 4, 5 only (index 6 is gray cloth)
         /// </summary>
         private int[] TransformPalette(int[] originalPalette, string themeName, int chapter)
         {

@@ -37,7 +37,7 @@ namespace Tests.Registry
         };
 
         /// <summary>
-        /// NPCs shipped with authored colour themes (CC-21). Everyone not listed here is still
+        /// NPCs shipped with authored colour themes. Everyone not listed here is still
         /// original-only. Adding a theme means adding it here AND to the character registry;
         /// the bytes themselves are pinned by NpcBuiltInThemeContractTests.
         /// </summary>

@@ -85,7 +85,6 @@ namespace FFTColorCustomizer.Tests
         // The config-based per-job color system works through a different mechanism
         // (ConfigBasedSpriteManager) and doesn't affect InterceptFilePath.
 
-
         [Fact]
         public void Mod_GetAllJobColors_ReturnsConfiguredColors()
         {

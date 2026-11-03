@@ -3,8 +3,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// ThemeManager now uses the new service architecture internally
-    /// while maintaining backward compatibility with existing code
+    /// The theme manager, now a thin layer over the theme service.
     /// </summary>
     public class ThemeManager : ThemeManagerAdapter
     {

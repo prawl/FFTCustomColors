@@ -4,7 +4,7 @@ using FFTColorCustomizer.Configuration;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Service for managing themes and their application
+    /// Service for managing themes and their application.
     /// </summary>
     public interface IThemeService
     {

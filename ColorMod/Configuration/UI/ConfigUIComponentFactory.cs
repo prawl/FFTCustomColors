@@ -5,7 +5,7 @@ using System.Windows.Forms;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Factory for creating consistent UI components
+    /// Factory for creating consistent UI components.
     /// </summary>
     public static class ConfigUIComponentFactory
     {

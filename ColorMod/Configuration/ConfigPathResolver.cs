@@ -5,7 +5,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Single source of truth for where Config.json lives (CC-13 split-brain fix).
+    /// Single source of truth for where Config.json lives.
     ///
     /// The Reloaded convention is User/Mods/&lt;namespace&gt;/Config.json, and the launcher's
     /// Configure button always writes there. The F1 flow used to fall back to the mod folder

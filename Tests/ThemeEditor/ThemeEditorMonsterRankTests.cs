@@ -10,7 +10,7 @@ using FFTColorCustomizer.ThemeEditor;
 
 namespace FFTColorCustomizer.Tests.ThemeEditor
 {
-    // --- CC-27: the editor must be able to reach ranks II and III, not just rank I ---
+    // --- The editor must be able to reach ranks II and III, not just rank I ---
     //
     // A monster family's three ranks share one sprite bin as palettes 0/1/2. The dropdown used
     // to list one entry per family and always edit palette 0, so a player designing a Black

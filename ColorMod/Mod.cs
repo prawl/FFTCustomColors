@@ -14,7 +14,7 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer;
 
 /// <summary>
-/// Thin orchestrator for FFT Color Mod - delegates to specialized components
+/// Thin orchestrator for FFT Color Mod, delegates to specialized components.
 /// </summary>
 public class Mod : IMod, IConfigurable
 {
@@ -45,7 +45,7 @@ public class Mod : IMod, IConfigurable
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
         ModLogger.Instance = new FileConsoleLogger();
-        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity
+        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD, Maximum verbosity
         ModLogger.Log("Mod constructor called - DEBUG BUILD v2.0.2-debug");
 
         _inputSimulator = inputSimulator;
@@ -70,7 +70,7 @@ public class Mod : IMod, IConfigurable
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
         ModLogger.Instance = new FileConsoleLogger();
-        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity for troubleshooting
+        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD, Maximum verbosity for troubleshooting
 
         ModLogger.Log("Default constructor called");
 
@@ -147,7 +147,7 @@ public class Mod : IMod, IConfigurable
             // Also initialize JobClassServiceSingleton with the mod path
             Services.JobClassServiceSingleton.Initialize(_modPath);
 
-            // Initialize coordinators and managers - pass actual mod path to avoid path resolution issues
+            // Initialize coordinators and managers, pass actual mod path to avoid path resolution issues
             _configCoordinator = new ConfigurationCoordinator(configPath, _modPath);
 
             // Get the theme manager from the coordinator (use the same instance everywhere)
@@ -183,10 +183,10 @@ public class Mod : IMod, IConfigurable
         if (config != null)
         {
             _initializer?.InitializeStoryCharacterThemes(config, themeManager);
-            // Don't apply themes here - let the Start method handle it with proper delay
+            // Don't apply themes here, let the Start method handle it with proper delay
             // This prevents duplicate calls to ApplyInitialThemes
 
-            // Note: Generic job themes will be applied in Start method after delay
+            // Generic job themes will be applied in Start method after delay
         }
     }
 
@@ -215,7 +215,7 @@ public class Mod : IMod, IConfigurable
         ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
         ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
-        // Apply themes - immediately in test environment, with delay in production
+        // Apply themes, immediately in test environment, with delay in production
         if (_configCoordinator != null && _themeCoordinator != null)
         {
             if (_isTestEnvironment)
@@ -231,7 +231,7 @@ public class Mod : IMod, IConfigurable
                         _initializer?.InitializeStoryCharacterThemes(config, themeManager);
                         themeManager.ApplyInitialThemes();
 
-                        // CRITICAL: Also apply generic job themes
+                        // Also apply generic job themes
                         _configCoordinator?.ApplyConfiguration();
 
                         ModLogger.Log("Initial themes applied successfully (test environment)");
@@ -260,7 +260,7 @@ public class Mod : IMod, IConfigurable
                                 _initializer?.InitializeStoryCharacterThemes(config, themeManager);
                                 themeManager.ApplyInitialThemes();
 
-                                // CRITICAL: Also apply generic job themes after delay
+                                // Also apply generic job themes after delay
                                 _configCoordinator?.ApplyConfiguration();
 
                                 ModLogger.Log("Initial themes applied successfully after delay");
@@ -315,7 +315,7 @@ public class Mod : IMod, IConfigurable
 
     private string GetUserConfigPath()
     {
-        // CC-13: every flow (F1 and the launcher Configure button) must converge on the
+        // every flow (F1 and the launcher Configure button) must converge on the
         // Reloaded User config path; the old exists-check fallback let the two flows write
         // different files, silently reverting selections. Migration of a legacy mod-folder
         // config happens inside the resolver.
@@ -361,7 +361,7 @@ public class Mod : IMod, IConfigurable
             themeManager.ApplyInitialThemes();
         }
 
-        // CRITICAL: Also apply generic job themes (knights, monks, archers, etc.)
+        // Also apply generic job themes (knights, monks, archers, etc.)
         // This was missing and why generic characters didn't get themed on startup
         _configCoordinator?.ApplyConfiguration();
     }

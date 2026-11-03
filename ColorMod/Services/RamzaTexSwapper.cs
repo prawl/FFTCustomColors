@@ -5,7 +5,7 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Handles swapping of Ramza tex files when themes are activated
+    /// Handles swapping of Ramza tex files when themes are activated.
     /// </summary>
     public class RamzaTexSwapper
     {
@@ -132,12 +132,12 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// DEPRECATED: Swaps ALL tex files for a single theme (applies same theme to all chapters).
+        /// DEPRECATED, Swaps ALL tex files for a single theme (applies same theme to all chapters).
         /// Use SwapTexFilesPerChapter instead for per-chapter theming.
         /// </summary>
         public void SwapTexFilesForTheme(string themeName)
         {
-            // Clean up theme directories but don't remove tex files yet - we'll overwrite them
+            // Clean up theme directories but don't remove tex files yet, we'll overwrite them
             RemoveAllThemeDirectories();
 
             // Theme files are stored in RamzaThemes folder at mod root

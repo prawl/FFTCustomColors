@@ -2,6 +2,7 @@ using System;
 
 namespace ColorMod.Registry
 {
+    /// <summary>One story character's name, enum type, sprite names and default theme.</summary>
     public class StoryCharacterDefinition
     {
         public string Name { get; set; }

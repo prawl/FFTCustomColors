@@ -51,9 +51,9 @@ namespace FFTColorCustomizer.Configuration
 
             _mainPanel = ConfigUIComponentFactory.CreateMainPanel();
 
-            // Owner cosmetic pass: the title bar left ~15px of dead space above the "Themes"
+            // Owner cosmetic pass, the title bar left ~15px of dead space above the "Themes"
             // heading (this panel's own 10px top padding plus the header label's own 5px).
-            // Shrink just the top inset -- left/right/bottom stay at the factory default
+            // Shrink just the top inset, left/right/bottom stay at the factory default
             // (UIConfiguration.MainPanelPadding) since every other row still wants that room.
             _mainPanel.Padding = new Padding(
                 UIConfiguration.MainPanelPadding, 2, UIConfiguration.MainPanelPadding, UIConfiguration.MainPanelPadding);
@@ -137,10 +137,10 @@ namespace FFTColorCustomizer.Configuration
         }
 
         /// <summary>
-        /// Headers read as a centered block with a shared left edge: every title starts at
-        /// the same x (so the collapse arrows form one column), and that edge sits where the
-        /// WIDEST title would be centered in the window. The pad derives from the FORM's
-        /// width, never the label's own size: padding feeds the label's preferred size,
+        /// Headers share one left edge, so the collapse arrows form a column. Every title
+        /// starts at the x where the widest title would sit centered in the window. The pad
+        /// derives from the FORM's
+        /// width, never the label's own size, padding feeds the label's preferred size,
         /// which feeds this auto-sizing table's column widths, so a label-size-driven pad
         /// is a feedback loop (it collapsed the headers to text width when tried).
         /// </summary>

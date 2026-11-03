@@ -3,7 +3,7 @@ using FFTColorCustomizer.Configuration;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Service for managing mod configuration
+    /// Service for managing mod configuration.
     /// </summary>
     public interface IConfigurationService
     {

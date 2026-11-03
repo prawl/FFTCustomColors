@@ -3,8 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
-    <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -16,7 +14,6 @@
     <!-- Resolve assembly version conflicts -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <NoWarn>MSB3277</NoWarn>
 
     <!-- IL Trimming Support for smaller mod size -->
     <!-- Set to true when publishing to reduce file size -->
@@ -24,7 +21,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Lets Tests drive ThemeEditorPanel.ConfirmResetAll (internal setter, see CC-27). -->
+    <!-- Lets the tests drive ThemeEditorPanel.ConfirmResetAll through its internal setter. -->
     <InternalsVisibleTo Include="FFTColorCustomizer.Tests" />
   </ItemGroup>
 

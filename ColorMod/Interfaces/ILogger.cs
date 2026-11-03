@@ -3,7 +3,7 @@ using System;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Defines logging operations for the application
+    /// Defines logging operations for the application.
     /// </summary>
     public interface ILogger
     {

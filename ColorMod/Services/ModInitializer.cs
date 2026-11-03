@@ -7,6 +7,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>Initializes the mod's services from the mod and source paths.</summary>
     public class ModInitializer
     {
         private readonly string _modPath;
@@ -147,7 +148,7 @@ namespace FFTColorCustomizer.Services
 
         private void LogConfiguredJobColors(Config config)
         {
-            // Method no longer needed - ColorScheme enum was removed
+            // Method no longer needed, ColorScheme enum was removed
         }
     }
 

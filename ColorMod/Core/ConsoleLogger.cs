@@ -86,7 +86,7 @@ namespace FFTColorCustomizer.Core
         /// Tees each log line to &lt;modDir&gt;/logs/live_log.txt. On first call,
         /// discovers the log path via the executing assembly's directory and
         /// truncates the file so a fresh game launch starts with an empty log.
-        /// Silently swallows errors — file-log tee must never break console logging.
+        /// Silently swallows errors, file-log tee must never break console logging.
         /// </summary>
         private static void TeeToFile(string message)
         {

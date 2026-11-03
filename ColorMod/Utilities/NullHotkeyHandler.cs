@@ -10,17 +10,17 @@ namespace FFTColorCustomizer.Utilities
     {
         public void StartMonitoring()
         {
-            // No-op - don't start monitoring in tests
+            // No-op, don't start monitoring in tests
         }
 
         public void StopMonitoring()
         {
-            // No-op - nothing to stop
+            // No-op, nothing to stop
         }
 
         public void ProcessKey(int vKey)
         {
-            // No-op - ignore key presses in tests
+            // No-op, ignore key presses in tests
         }
     }
 }

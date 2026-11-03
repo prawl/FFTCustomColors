@@ -7,7 +7,7 @@ namespace FFTColorCustomizer.ThemeEditor
     /// <summary>
     /// How the per-index relationships are captured and re-applied. Default is Preserve
     /// (legacy behavior). UniformHue is for sections where every index is meant to be
-    /// a lightness/saturation variant of one shared color — useful when a section has
+    /// a lightness/saturation variant of one shared color, useful when a section has
     /// 4+ indices and the original sprite's hue drift between them shouldn't survive
     /// a theme change.
     /// </summary>
@@ -22,7 +22,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
         /// <summary>
         /// Force every index to share the user's chosen hue. Capture per-index Saturation/Lightness
-        /// deltas additively (not as ratios). Result: all indices become evenly-spaced shades of
+        /// deltas additively (not as ratios). Result, all indices become evenly-spaced shades of
         /// the picked color, robust at any base lightness.
         /// </summary>
         UniformHue
@@ -75,7 +75,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 }
                 else
                 {
-                    // Preserve mode: hue delta + multiplicative S/L ratios from the original.
+                    // Preserve mode, hue delta + multiplicative S/L ratios from the original.
                     _relationships[kvp.Key] = new ColorRelationship
                     {
                         HueDelta = indexHsl.H - primaryHsl.H,

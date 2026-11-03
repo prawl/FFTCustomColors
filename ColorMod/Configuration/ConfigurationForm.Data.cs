@@ -105,7 +105,7 @@ namespace FFTColorCustomizer.Configuration
             if (!string.IsNullOrEmpty(_modPath))
             {
                 mappingsDirectory = System.IO.Path.Combine(_modPath, "Data", "SectionMappings");
-                // Pass the unit/ directory - ThemeEditorPanel will construct full path based on character type
+                // Pass the unit/ directory, ThemeEditorPanel will construct full path based on character type
                 spritesDirectory = System.IO.Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
                 // Mods directory is the parent of the mod path (for GenericJobs detection)
                 modsDirectory = System.IO.Path.GetDirectoryName(_modPath);
@@ -165,7 +165,7 @@ namespace FFTColorCustomizer.Configuration
 
             try
             {
-                // Check if this is a Ramza chapter - use NXD-based saving
+                // Check if this is a Ramza chapter, use NXD-based saving
                 var ramzaThemeSaver = new Services.RamzaThemeSaver();
                 if (ramzaThemeSaver.IsRamzaChapter(args.JobName))
                 {
@@ -203,8 +203,8 @@ namespace FFTColorCustomizer.Configuration
         /// so the wording is directly assertable. A monster's JobName is its FAMILY key
         /// ("Skeleton"), not what the user actually picked in the dropdown ("Bonesnatch (rank
         /// 2)"), and monsters don't match any of the WotL/story/NPC checks below so they used
-        /// to fall through to "Generic Characters" -- both halves of the old message were wrong
-        /// for a monster save. Non-monster wording is untouched. See CC-27.
+        /// to fall through to "Generic Characters", both halves of the old message were wrong
+        /// for a monster save. Non-monster wording is untouched.
         /// </summary>
         internal string BuildThemeSavedMessage(ThemeSavedEventArgs args)
         {
@@ -236,8 +236,8 @@ namespace FFTColorCustomizer.Configuration
                 : isMonster ? "Monsters"
                 : (isStoryCharacter ? "Story Characters" : "Generic Characters");
 
-            // Monster themes are family scoped by design (one recolor applies to every rank),
-            // which the per-rank dropdown rows make easy to miss -- say so explicitly.
+            // Monster themes are family scoped (one recolor applies to every rank),
+            // which the per-rank dropdown rows make easy to miss, say so explicitly.
             var familyScopeNote = isMonster ? $" It is available on every rank of the {args.JobName} family." : string.Empty;
 
             return $"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.{familyScopeNote}";
@@ -538,7 +538,7 @@ namespace FFTColorCustomizer.Configuration
 
         private void LoadMonsters(ref int row)
         {
-            // Every registered monster family: a "— <Family> —" subsection label spanning all 3
+            // Every registered monster family, a "— <Family> —" subsection label spanning all 3
             // columns, then one row per tier. Fully data-driven from MonsterThemeRegistry, so
             // adding a family needs no edits here.
             foreach (var fam in MonsterThemeRegistry.Families)

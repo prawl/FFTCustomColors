@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Provides centralized path resolution for all file system operations
+    /// Provides centralized path resolution for all file system operations.
     /// </summary>
     public interface IPathResolver
     {

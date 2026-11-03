@@ -9,19 +9,18 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Service for managing themes and their application
+    /// Service for managing themes and their application.
     /// </summary>
     public class ThemeService : IThemeService
     {
         private readonly IPathResolver _pathResolver;
-        private readonly IConfigurationService _configurationService;
         private readonly Dictionary<string, string> _currentThemes;
         private readonly List<string> _availableThemes;
 
         public ThemeService(IPathResolver pathResolver, IConfigurationService configurationService)
         {
             _pathResolver = pathResolver ?? throw new ArgumentNullException(nameof(pathResolver));
-            _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+            ArgumentNullException.ThrowIfNull(configurationService);
             _currentThemes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             _availableThemes = LoadAvailableThemes();
         }

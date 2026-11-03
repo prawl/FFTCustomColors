@@ -10,7 +10,7 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
-    /// Coordinates theme and sprite operations
+    /// Coordinates theme and sprite operations.
     /// </summary>
     public class ThemeCoordinator
     {
@@ -55,7 +55,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             _sourcePath = sourcePath ?? throw new ArgumentNullException(nameof(sourcePath));
             _modPath = modPath ?? throw new ArgumentNullException(nameof(modPath));
 
-            // Initialize color cycler - use _modPath for deployed environment
+            // Initialize color cycler, use _modPath for deployed environment
             string spritesPath = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
             _colorCycler = new ColorSchemeCycler(spritesPath);
 
@@ -151,7 +151,7 @@ namespace FFTColorCustomizer.Core.ModComponents
                 return originalPath;
             }
 
-            // Build the themed sprite path - use _modPath for deployed environment, not _sourcePath
+            // Build the themed sprite path, use _modPath for deployed environment, not _sourcePath
             var themedDir = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath,
                 FFTPackPath, UnitPath, $"{SpritesPrefix}{_currentColorScheme}");
             var themedPath = Path.Combine(themedDir, fileName);

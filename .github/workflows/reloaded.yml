@@ -31,6 +31,9 @@ env:
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') }}
   RELEASE_TAG: ${{ github.ref_name }}
 
+  # The commit a push started from, so the health ratchet also judges against main's memory.
+  GATES_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+
 jobs:
   build:
     runs-on: windows-latest
@@ -51,6 +54,11 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
+
+    - name: Setup Python (for the shared gates)
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
 
     - name: Setup Node.js (for changelog)
       uses: actions/setup-node@v4

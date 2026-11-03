@@ -6,10 +6,10 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.ThemeEditor
 {
     /// <summary>
-    /// Drives the "Animate" checkbox's walk-cycle preview: owns the WinForms timer, the current
+    /// Drives the Animate checkbox's walk preview. It owns the WinForms timer, the current
     /// phase, and a frame cache per pane (Modified / Original). The panel hands this class four
     /// lambdas so it never needs to know about controls directly, it just calls back with a
-    /// bitmap to paint. See CC-36.
+    /// bitmap to paint.
     /// </summary>
     internal sealed class WalkPreviewAnimator : IDisposable
     {
@@ -25,7 +25,7 @@ namespace FFTColorCustomizer.ThemeEditor
         internal List<Bitmap> ModifiedFrames { get; private set; }
         internal List<Bitmap> OriginalFrames { get; private set; }
 
-        /// <summary>Test seam: the timer's current interval, so tests can pin the variable
+        /// <summary>Test seam, the timer's current interval, so tests can pin the variable
         /// per-beat timing (<see cref="WalkCycle.BeatDurationsMs"/>) without reaching into a
         /// private field.</summary>
         internal int TimerIntervalMs => _timer.Interval;
@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.ThemeEditor
             Phase = 0;
             DisposeModifiedCache();
             DisposeOriginalCache();
-            // Does NOT repaint: the panel repaints the static pose after calling Stop.
+            // Does NOT repaint, the panel repaints the static pose after calling Stop.
         }
 
         /// <summary>

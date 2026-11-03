@@ -7,8 +7,7 @@ using ColorMod.Registry;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Maps sprite file names to character keys and color scheme descriptions
-    /// Extracted from Config.GetColorForSprite to separate responsibilities
+    /// Maps sprite file names to character keys and color scheme descriptions.
     /// </summary>
     public class SpriteNameMapper
     {

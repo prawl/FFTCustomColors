@@ -3,6 +3,7 @@ using System.IO;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>Names the tex files each Ramza chapter uses.</summary>
     public class TexFileManager
     {
         public List<string> GetTexFilesForCharacter(string characterName)

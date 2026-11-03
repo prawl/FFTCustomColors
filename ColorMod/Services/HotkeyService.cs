@@ -3,18 +3,12 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
 {
+    /// <summary>Routes the F1 hotkey to the color scheme callbacks.</summary>
     public class HotkeyService
     {
         private const int VK_F1 = 0x70;
 
-        private readonly Action<string> _setColorScheme;
-        private readonly Func<string> _cycleNextScheme;
-        private readonly Func<string> _cyclePreviousScheme;
-        private readonly Action _cycleOrlandeauTheme;
-        private readonly Action _cycleAgriasTheme;
-        private readonly Action _cycleCloudTheme;
         private readonly Action _openConfigUI;
-        private readonly IInputSimulator? _inputSimulator;
 
         public event Action? ConfigUIRequested;
 
@@ -28,14 +22,7 @@ namespace FFTColorCustomizer.Services
             Action openConfigUI,
             IInputSimulator? inputSimulator)
         {
-            _setColorScheme = setColorScheme;
-            _cycleNextScheme = cycleNextScheme;
-            _cyclePreviousScheme = cyclePreviousScheme;
-            _cycleOrlandeauTheme = cycleOrlandeauTheme;
-            _cycleAgriasTheme = cycleAgriasTheme;
-            _cycleCloudTheme = cycleCloudTheme;
             _openConfigUI = openConfigUI;
-            _inputSimulator = inputSimulator;
         }
 
         public void ProcessHotkeyPress(int vkCode)
@@ -57,21 +44,6 @@ namespace FFTColorCustomizer.Services
 
             // Also invoke any event handlers if present (for tests)
             ConfigUIRequested?.Invoke();
-        }
-
-
-        private void SimulateMenuRefresh()
-        {
-            if (_inputSimulator != null)
-            {
-                ModLogger.Log("Calling SimulateMenuRefresh...");
-                bool result = _inputSimulator.SimulateMenuRefresh();
-                ModLogger.Log($"SimulateMenuRefresh returned: {result}");
-            }
-            else
-            {
-                ModLogger.LogWarning("InputSimulator is null!");
-            }
         }
     }
 }

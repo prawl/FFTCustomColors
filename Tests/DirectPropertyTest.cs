@@ -5,7 +5,6 @@ using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
-
 namespace FFTColorCustomizer.Tests
 {
     public class DirectPropertyTest

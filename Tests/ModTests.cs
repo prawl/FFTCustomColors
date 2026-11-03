@@ -116,7 +116,6 @@ namespace FFTColorCustomizer.Tests
             }
         }
 
-
         private int CountOccurrences(string text, string pattern)
         {
             int count = 0;

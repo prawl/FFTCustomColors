@@ -20,7 +20,7 @@ namespace FFTColorCustomizer.ThemeEditor
     }
 
     /// <summary>
-    /// Panel for managing user-created themes - view, export, and delete.
+    /// Panel for managing user-created themes, view, export, and delete.
     /// </summary>
     public class MyThemesPanel : Panel
     {
@@ -28,7 +28,6 @@ namespace FFTColorCustomizer.ThemeEditor
         /// Raised when a theme is deleted, so external components can refresh their theme lists.
         /// </summary>
         public event EventHandler<ThemeDeletedEventArgs> ThemeDeleted;
-        private readonly string _basePath;
         private readonly UserThemeService _userThemeService;
         private TreeView _themesTreeView;
         private Button _deleteButton;
@@ -36,7 +35,6 @@ namespace FFTColorCustomizer.ThemeEditor
 
         public MyThemesPanel(string basePath)
         {
-            _basePath = basePath;
             _userThemeService = new UserThemeService(basePath);
             MinimumSize = new System.Drawing.Size(0, 200);
             InitializeComponents();

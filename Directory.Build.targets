@@ -1,0 +1,8 @@
+<Project>
+  <!-- The nullable warnings are paid down under their own ratchet, so the shared switch stays off
+       until the count reaches zero. -->
+  <PropertyGroup>
+    <ModGatesWarningsAsErrors>false</ModGatesWarningsAsErrors>
+  </PropertyGroup>
+  <Import Project="gates\Directory.Build.targets" />
+</Project>

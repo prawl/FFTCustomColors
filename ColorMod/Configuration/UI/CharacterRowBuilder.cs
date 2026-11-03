@@ -12,7 +12,7 @@ using FFTColorCustomizer.ThemeEditor;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Builds character rows for the configuration form
+    /// Builds character rows for the configuration form.
     /// </summary>
     public class CharacterRowBuilder
     {
@@ -112,7 +112,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Get available themes for this specific job (shared + job-specific)
             var builtInThemes = GetAvailableGenericThemesForJob(jobName);
 
-            // Get user themes for this job - convert "Knight (Male)" to "Knight_Male"
+            // Get user themes for this job, convert "Knight (Male)" to "Knight_Male"
             var jobProperty = ConvertJobNameToPropertyFormat(jobName);
             var userThemes = _userThemeService.GetUserThemes(jobProperty);
 
@@ -126,7 +126,8 @@ namespace FFTColorCustomizer.Configuration.UI
             carousel.Tag = new { JobName = jobName, Theme = currentTheme, Setter = setter };
 
             // Set up lazy loading callback
-            carousel.LoadImagesCallback = (c) => {
+            carousel.LoadImagesCallback = (c) =>
+            {
                 var tag = c.Tag as dynamic;
                 if (tag != null)
                 {
@@ -163,7 +164,7 @@ namespace FFTColorCustomizer.Configuration.UI
                     // Update tag for lazy loading
                     carousel.Tag = new { JobName = jobName, Theme = newTheme, Setter = setter };
 
-                    // Only update images if already loaded — load off the UI thread so the
+                    // Only update images if already loaded, load off the UI thread so the
                     // config window stays responsive while sprites decode + palette-swap.
                     if (carousel.HasImagesLoaded)
                     {
@@ -176,7 +177,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Adds a Monster tier row: label + theme dropdown populated from the family's curated
+        /// Adds a Monster tier row, label + theme dropdown populated from the family's curated
         /// presets (MonsterThemeRegistry) plus its tier-agnostic user themes, and a recolored
         /// preview carousel. Generic across all families (Chocobo, Goblin, …).
         /// </summary>
@@ -190,7 +191,7 @@ namespace FFTColorCustomizer.Configuration.UI
             var comboBox = new ThemeComboBox();
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             var builtInThemes = MonsterThemeRegistry.GetThemeNames(tierKey);
-            // Monster user themes are tier-agnostic — saved under one editor key (== family name)
+            // Monster user themes are tier-agnostic, saved under one editor key (== family name)
             // and offered on every tier (a custom recolor applies to any tier's palette).
             var userThemes = _userThemeService.GetUserThemes(family);
             comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
@@ -198,7 +199,7 @@ namespace FFTColorCustomizer.Configuration.UI
             _mainPanel.Controls.Add(comboBox, 1, row);
             controlsList.Add(comboBox);
 
-            // Preview carousel: the family's sprite recolored for this tier + selected theme.
+            // Preview carousel, the family's sprite recolored for this tier + selected theme.
             var carousel = ConfigUIComponentFactory.CreatePreviewPictureBox();
             carousel.Tag = new { Family = family, TierKey = tierKey, Theme = currentTheme };
             carousel.LoadImagesCallback = (c) =>
@@ -239,7 +240,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Pure loader for a monster tier preview — filesystem + GDI only, safe off the UI thread.
+        /// Pure loader for a monster tier preview, filesystem + GDI only, safe off the UI thread.
         /// Loads the family's HD BMP and applies the tier's palette (recolored per preset/user
         /// theme, or the original tier color for "original"), cropped via FrameLayout.For(family).
         /// </summary>
@@ -377,13 +378,14 @@ namespace FFTColorCustomizer.Configuration.UI
                     characterConfig.SetValue(newTheme);
 
                     // Update tag for lazy loading
-                    carousel.Tag = new {
+                    carousel.Tag = new
+                    {
                         CharacterName = characterConfig.PreviewName,
                         Theme = newTheme,
                         Config = characterConfig
                     };
 
-                    // Only update images if already loaded — load off the UI thread so the
+                    // Only update images if already loaded, load off the UI thread so the
                     // config window stays responsive while sprites decode + palette-swap.
                     if (carousel.HasImagesLoaded)
                     {
@@ -397,14 +399,16 @@ namespace FFTColorCustomizer.Configuration.UI
 
             // Set initial preview data for lazy loading
             var currentValue = characterConfig.GetValue();
-            carousel.Tag = new {
+            carousel.Tag = new
+            {
                 CharacterName = characterConfig.PreviewName,
                 Theme = currentValue.ToString(),
                 Config = characterConfig
             };
 
             // Set up lazy loading callback
-            carousel.LoadImagesCallback = (c) => {
+            carousel.LoadImagesCallback = (c) =>
+            {
                 var tag = c.Tag as dynamic;
                 if (tag != null)
                 {
@@ -452,7 +456,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
         /// <summary>
         /// Loads preview images on a background thread, then marshals them onto the carousel
-        /// on the UI thread. Keeps the config window responsive during theme changes — image
+        /// on the UI thread. Keeps the config window responsive during theme changes, image
         /// decode + palette swaps are slow enough to visibly freeze the UI if run inline.
         /// If the user changed the theme again while we were loading, the now-stale result is
         /// discarded; only the carousel's current theme is ever applied.
@@ -532,7 +536,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Pure loader for a generic job's preview images — safe to run off the UI thread:
+        /// Pure loader for a generic job's preview images, safe to run off the UI thread:
         /// it touches no Control, only the filesystem, embedded resources and GDI+ bitmaps.
         /// </summary>
         private Image[] LoadGenericPreviewImages(string jobName, string theme)
@@ -544,7 +548,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 return new Image[0];
             }
 
-            // Try HD BMP path first — crisp preview if we have a sprite-sheet for this job
+            // Try HD BMP path first, crisp preview if we have a sprite-sheet for this job
             var bmpImages = TryLoadGenericFromBmp(jobName, theme);
             if (bmpImages != null && bmpImages.Length > 0)
             {
@@ -571,12 +575,12 @@ namespace FFTColorCustomizer.Configuration.UI
             var images = new List<Image>();
 
             // Try to load all 8 directions from embedded resources
-            // FFT sprite order: s, sw, w, nw, n, ne, e, se (starting facing camera, going clockwise)
+            // FFT sprite order, s, sw, w, nw, n, ne, e, se (starting facing camera, going clockwise)
             string[] directions = { "_s", "_sw", "_w", "_nw", "_n", "_ne", "_e", "_se" };
 
             foreach (var direction in directions)
             {
-                // Resource name format: FFTColorCustomizer.Resources.Previews.{job_folder}.{job}_{theme}_{direction}.png
+                // Resource name format, FFTColorCustomizer.Resources.Previews.{job_folder}.{job}_{theme}_{direction}.png
                 string resourceName = $"FFTColorCustomizer.Resources.Previews.{fileName}.{fileName}_{theme.ToLower()}{direction}.png";
 
                 using (var stream = assembly.GetManifestResourceStream(resourceName))
@@ -680,7 +684,7 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Pure loader for a story character's preview images — safe to run off the UI thread:
+        /// Pure loader for a story character's preview images, safe to run off the UI thread:
         /// it touches no Control, only the filesystem, embedded resources and GDI+ bitmaps.
         /// </summary>
         private Image[] LoadStoryCharacterPreview(string characterName, string theme)
@@ -702,7 +706,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // For Ramza characters, check if this is a user theme first
             if (characterName.StartsWith("RamzaChapter") && !string.IsNullOrEmpty(modPath))
             {
-                // Check if this is a user theme - load from palette + original sprite
+                // Check if this is a user theme, load from palette + original sprite
                 if (_userThemeService.IsUserTheme(characterName, theme))
                 {
                     var userThemeImages = TryLoadRamzaUserThemePreview(modPath, characterName, theme);
@@ -732,10 +736,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
             }
 
-            // For non-Ramza story characters: check user theme FIRST. The HD-BMP path silently
+            // For non-Ramza story characters, check user theme FIRST. The HD-BMP path silently
             // falls back to the vanilla BMP when no sprites_<char>_<theme>/ folder exists (always
             // the case for user themes, since user themes ship as a palette file), so calling it
-            // first masks the user theme and shows vanilla — the bug the user reported.
+            // first masks the user theme and shows vanilla, the bug the user reported.
             if (!string.IsNullOrEmpty(modPath) && _userThemeService.IsUserTheme(characterName, theme))
             {
                 string unitPath = FindActualUnitPath(modPath);
@@ -780,12 +784,12 @@ namespace FFTColorCustomizer.Configuration.UI
             var images = new List<Image>();
 
             // Try to load all 8 directions from embedded resources
-            // FFT sprite order: s, sw, w, nw, n, ne, e, se (starting facing camera, going clockwise)
+            // FFT sprite order, s, sw, w, nw, n, ne, e, se (starting facing camera, going clockwise)
             string[] directions = { "_s", "_sw", "_w", "_nw", "_n", "_ne", "_e", "_se" };
 
             foreach (var direction in directions)
             {
-                // Resource name format: FFTColorCustomizer.Resources.Previews.{character_folder}.{character}_{theme}_{direction}.png
+                // Resource name format, FFTColorCustomizer.Resources.Previews.{character_folder}.{character}_{theme}_{direction}.png
                 string resourceName = $"FFTColorCustomizer.Resources.Previews.{characterName.ToLower()}.{characterName.ToLower()}_{theme.ToLower()}{direction}.png";
 
                 using (var stream = assembly.GetManifestResourceStream(resourceName))
@@ -893,7 +897,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Find the actual FFTIVC path (handles versioned directories)
                 string unitPath = FindActualUnitPath(modPath);
 
-                // Check if this is a user theme - if so, load from sprites_original with external palette
+                // Check if this is a user theme, if so, load from sprites_original with external palette
                 if (_userThemeService.IsUserTheme(characterName, theme))
                 {
                     return TryLoadStoryCharacterUserThemeFromBinFile(modPath, unitPath, spriteFileName, characterName, theme);
@@ -904,7 +908,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 string binPath = "";
 
                 // First try a character-specific theme folder
-                // Convert theme names: "Sephiroth Black" -> "sephiroth_black"
+                // Convert theme names, "Sephiroth Black" -> "sephiroth_black"
                 string themeFolderName = theme.ToLower()
                     .Replace(" ", "_")  // Replace spaces with underscores
                     .Replace("__", "_"); // Clean up any double underscores
@@ -945,7 +949,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Only use different palettes for generic job sprites with palette swaps
                 int paletteIndex = 0; // Story character themed sprites have their colors baked in
 
-                // Construct 8 / tetsu sprite has a non-standard layout — its standing-south
+                // Construct 8 / tetsu sprite has a non-standard layout, its standing-south
                 // pose lives at (x=48, y=0, w=48, h=48), wider and taller than the standard
                 // 32x40 humanoid frame. Show the standing pose only and let the rotate
                 // carousel cycle through the same image (no-op rotation).
@@ -958,10 +962,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 var sprites = _binExtractor.ExtractCornerDirections(binData, 0, paletteIndex);
                 ModLogger.LogDebug($"Extracted {sprites.Length} corner sprites from bin file using palette {paletteIndex} for theme '{theme}'");
 
-                // Return 4 corner sprites: NE, SE, SW, NW (for smooth rotation)
+                // Return 4 corner sprites, NE, SE, SW, NW (for smooth rotation)
                 var carouselImages = new Image[]
                 {
-                    sprites[2], // SW (default - matches PNG previews)
+                    sprites[2], // SW (default, matches PNG previews)
                     sprites[3], // NW
                     sprites[0], // NE
                     sprites[1]  // SE
@@ -1000,7 +1004,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // The HD path only needs the character's preview sheet plus the palette, so try it
             // before hunting for a vanilla .bin. Doing it the other way round made a missing or
             // mis-named .bin abort the whole user-theme preview, and the caller then quietly
-            // fell back to the vanilla sheet — the theme looked like it had done nothing.
+            // fell back to the vanilla sheet, the theme looked like it had done nothing.
             try
             {
                 var hdLoader = new SpriteSheetPreviewLoader(modPath);
@@ -1122,7 +1126,7 @@ namespace FFTColorCustomizer.Configuration.UI
         /// <summary>
         /// Try to load a crisp HD preview for a generic job (Knight, Squire, etc.) by reading
         /// the per-job sprite-sheet BMP and applying the themed .bin's palette at runtime.
-        /// Returns null if no BMP is available — caller should fall back to bin extraction.
+        /// Returns null if no BMP is available, caller should fall back to bin extraction.
         /// </summary>
         private Image[] TryLoadGenericFromBmp(string jobName, string theme)
         {
@@ -1164,7 +1168,7 @@ namespace FFTColorCustomizer.Configuration.UI
                     }
                 }
 
-                // Built-in theme: locate the themed .bin file (job-specific theme → generic theme → original)
+                // Built-in theme, locate the themed .bin file (job-specific theme → generic theme → original)
                 string unitPath = IsWotLJob(jobName) ? FindActualUnitPspPath(modPath) : FindActualUnitPath(modPath);
                 if (string.IsNullOrEmpty(unitPath)) return null;
 
@@ -1173,7 +1177,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 if (string.IsNullOrEmpty(themedBinPath))
                 {
-                    // No themed bin found — just load the original BMP (theme matches original or
+                    // No themed bin found, just load the original BMP (theme matches original or
                     // theme file is missing). Returning the un-swapped BMP is the right fallback.
                     using (var rawBmp = BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath))
                     {
@@ -1195,7 +1199,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
         /// <summary>
         /// Resolves a themed .bin path for a generic job, following the same precedence as
-        /// TryLoadGenericFromBinFile: job-specific folder → generic-theme folder → fall back
+        /// TryLoadGenericFromBinFile, job-specific folder → generic-theme folder → fall back
         /// to original sprite.
         /// </summary>
         private static string ResolveThemedBinPath(string unitPath, string jobName, string theme, string spriteFileName)
@@ -1428,7 +1432,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 return null;
             }
 
-            // Try HD BMP path first — gives a crisp preview if an HD sprite-sheet ships for this
+            // Try HD BMP path first, gives a crisp preview if an HD sprite-sheet ships for this
             // Ramza chapter. Matches what the non-Ramza user theme path already does.
             try
             {
@@ -1442,7 +1446,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
             }
 
-            // Fallback: legacy pixelated bin extraction
+            // Fallback, legacy pixelated bin extraction
             var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
 
             // Return 4 corner sprites for carousel
@@ -1521,7 +1525,7 @@ namespace FFTColorCustomizer.Configuration.UI
         private string ConvertJobNameToSpriteFile(string jobName)
         {
             // Map job display names to sprite file names based on JobClasses.json
-            // Format: "Job Name (Gender)" -> "battle_sprite_spr.bin"
+            // Format, "Job Name (Gender)" -> "battle_sprite_spr.bin"
 
             switch (jobName)
             {

@@ -1,15 +1,14 @@
-# tools/pipeline.ps1 - the shared pipeline prefix for BuildLinked.ps1 (dev deploy)
-# and Publish.ps1 (release zip). Dot-source it; everything here lands in the
-# caller's scope. Mirrors the sibling FFTLivingWeapons split: one copy of the
-# build + shared asset staging + verification, two callers, no drift.
+# tools/pipeline.ps1 holds the steps BuildLinked.ps1 (dev deploy) and Publish.ps1 (release zip)
+# share. Dot-source it; everything here lands in the caller's scope.
 #
-# The required-file/floor manifest is tools/package_manifest.json (CC-10) - the
-# SAME file tools/analyze.py gates the release zip against. Test-ManifestTree
-# below is its disk-side mirror, so BuildLinked's deploy verification and the
-# Publish zip gates can never check different lists.
+# The shared gates load first from gates/pipeline/gates.ps1. The required file manifest is
+# tools/package_manifest.json, the same file tools/analyze.py gates the release zip against, and
+# Test-ManifestTree below is its disk side mirror, so the deploy check and the zip check never
+# read different lists.
 
-# Repo root, resolved from this file's own location so everything works no
-# matter what cwd the caller happens to be in when it dot-sources us.
+. "$PSScriptRoot\..\gates\pipeline\gates.ps1"
+
+# Resolved from this file's own location, so the caller's working folder does not matter.
 $PipelineRepoRoot = Split-Path -Parent $PSScriptRoot
 
 # The active Reloaded ModId (must match ColorMod/ModConfig.json "ModId"). A folder
@@ -33,7 +32,7 @@ function Get-PackageManifest {
 }
 
 function Test-ManifestTree {
-    # Disk-side mirror of tools/analyze.py's zip gate (CC-10), driven by the SAME
+    # Disk-side mirror of tools/analyze.py's zip gate, driven by the SAME
     # tools/package_manifest.json: required entries, JSON parse checks, per-prefix
     # file-count floors, and the sprites_* theme-dir floor - evaluated against a
     # deployed/staged directory instead of a zip. Returns an array of error
@@ -117,27 +116,6 @@ function Test-MonsterFamilyAssets {
     return $errs
 }
 
-function Invoke-UnitTestGate {
-    # The contract-test gate (CC-16): the work-ledger enforcement (TodoContractTests)
-    # and the logging contract (LogContractTests) run as a hard gate before any
-    # deploy or package, exactly as the sibling FFT mods run theirs. FILTERED to the
-    # two contract suites so the dev loop does not pay for the full 1200-test suite;
-    # CI still runs everything. ONE canonical flag set, so a gate that passes
-    # locally passed under the same conditions everywhere.
-    param(
-        [Parameter(Mandatory = $true)][ValidateSet('DEPLOY', 'PACKAGE')]
-        [string]$FailVerb
-    )
-
-    Write-Host "Running the contract-test gate (Todo + Log + JSON schema contracts)..." -ForegroundColor Cyan
-    & dotnet test "$PipelineRepoRoot\FFTColorCustomizer.Tests.csproj" --nologo -p:WarningLevel=0 `
-        --filter "FullyQualifiedName~TodoContractTests|FullyQualifiedName~LogContractTests|FullyQualifiedName~JsonSchemaContractTests"
-    if ($LASTEXITCODE -ne 0) {
-        throw "REFUSING TO ${FailVerb}: the contract tests failed (see above)."
-    }
-    Write-Host "  -> Contract gate green." -ForegroundColor Green
-}
-
 function Invoke-ColorModBuild {
     # Build the mod DLL (+ dependency tree) into $OutDir. Two flavors, one function:
     #   -Dev     the BuildLinked deploy build (Reloaded IL trimming for size)
@@ -191,7 +169,7 @@ function Copy-SqliteNativeToRoot {
     # in a context where runtimes/<rid>/native probing alone is not reliable, so the
     # pinvoke falls back to same-directory resolution. BuildLinked has done this for
     # dev deploys since c686d852; the release zip never did, which crashed Ramza
-    # theme saves for every zip user (CC-10). Missing input is a hard failure for
+    # theme saves for every zip user. Missing input is a hard failure for
     # BOTH flavors now - a build output without the native DLL is a broken mod.
     param([Parameter(Mandatory = $true)][string]$Dest)
 

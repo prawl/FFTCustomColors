@@ -117,7 +117,6 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             foreach (var img in images) img?.Dispose();
         }
 
-
         public void Dispose()
         {
             _carousel?.Dispose();

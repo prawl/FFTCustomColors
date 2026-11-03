@@ -4,7 +4,7 @@ using System.IO;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Coordinates Ramza tex theme generation and application
+    /// Coordinates Ramza tex theme generation and application.
     /// </summary>
     public class RamzaThemeCoordinator
     {
@@ -36,7 +36,7 @@ namespace FFTColorCustomizer.Services
 
             var swapper = new RamzaTexSwapper(_sourcePath, gameBasePath);
 
-            // Handle "original" theme specially - restore original tex files instead of swapping
+            // Handle "original" theme specially, restore original tex files instead of swapping
             if (themeName == "original")
             {
                 swapper.RestoreOriginalTexFiles();

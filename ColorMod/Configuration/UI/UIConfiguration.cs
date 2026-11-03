@@ -3,7 +3,7 @@ using System.Drawing;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// Centralized UI configuration constants and colors
+    /// Centralized UI configuration constants and colors.
     /// </summary>
     public static class UIConfiguration
     {

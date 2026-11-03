@@ -10,8 +10,7 @@ using FFTColorCustomizer.ThemeEditor;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Refactored sprite manager that uses CharacterDefinitionService for centralized character management
-    /// This reduces coupling and makes it easier to add/remove characters
+    /// Sprite manager driven by the character definitions, so a new character needs no code here.
     /// </summary>
     public class ConfigBasedSpriteManager
     {
@@ -37,10 +36,10 @@ namespace FFTColorCustomizer.Utilities
             _configManager = configManager;
             _characterService = characterService;
 
-            // Try to find FFTIVC folder - it might be in a versioned directory
+            // Try to find FFTIVC folder, it might be in a versioned directory
             _sourceUnitPath = FindFFTIVCPath(_modPath);
 
-            // Destination path: where we copy themes to (can be the same for now since we're intercepting)
+            // Destination path, where we copy themes to (can be the same for now since we're intercepting)
             _unitPath = _sourceUnitPath;
 
             // Initialize user theme service
@@ -144,7 +143,7 @@ namespace FFTColorCustomizer.Utilities
             // Apply story character themes using CharacterDefinitionService
             ApplyStoryCharacterThemes(config);
 
-            // Apply Monster themes (every registered family: recolor palettes 0/1/2 of its sprite bin)
+            // Apply Monster themes (every registered family, recolor palettes 0/1/2 of its sprite bin)
             try
             {
                 new MonsterThemeCoordinator(_modPath, _unitPath).Apply(config);
@@ -164,7 +163,7 @@ namespace FFTColorCustomizer.Utilities
                 .Where(p => p.PropertyType == typeof(string) &&
                            (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
-            // Debug: Log all properties found
+            // Log all properties found
             var propList = properties.ToList();
             ModLogger.Log($"[DEBUG] Found {propList.Count} job properties to process");
             foreach (var prop in propList)
@@ -172,7 +171,7 @@ namespace FFTColorCustomizer.Utilities
                 ModLogger.Log($"[DEBUG]   - Property: {prop.Name}, Type: {prop.PropertyType.Name}");
             }
 
-            // Additional debug: Check specifically for Archer properties
+            // Additional debug, Check specifically for Archer properties
             var allProps = typeof(Config).GetProperties();
             var archerProps = allProps.Where(p => p.Name.Contains("Archer")).ToList();
             ModLogger.Log($"[DEBUG] Archer-specific properties found: {archerProps.Count}");
@@ -260,7 +259,7 @@ namespace FFTColorCustomizer.Utilities
                 var themeNameOriginal = themeValue.ToString() ?? "original";
 
                 // Apply theme for each sprite name (including original)
-                // Skip NXD patching for Ramza - already handled above
+                // Skip NXD patching for Ramza, already handled above
                 foreach (var spriteName in character.SpriteNames)
                 {
                     ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeNameOriginal, skipNxdForRamza: true);
@@ -275,7 +274,7 @@ namespace FFTColorCustomizer.Utilities
             // For "original" theme, restore the original sprite by copying from sprites_original directory.
             // Some story characters (Construct 8 = tetsu) only ship their vanilla in a character-specific
             // folder (sprites_construct8_original/) rather than the generic sprites_original/, so check
-            // both before giving up — same fallback the user-theme path already uses.
+            // both before giving up, same fallback the user-theme path already uses.
             if (themeName.ToLower() == "original")
             {
                 ModLogger.Log($"Restoring original sprite for {characterName}/{spriteName}");
@@ -451,18 +450,18 @@ namespace FFTColorCustomizer.Utilities
             }
 
             // User themes are now written directly to base unit folder by ApplyUserTheme,
-            // so no special interception is needed - the file is already in the right place.
+            // so no special interception is needed, the file is already in the right place.
             // Just log for debugging purposes.
             var isUserTheme = _userThemeService.IsUserTheme(jobProperty, colorSchemeOriginal);
             if (isUserTheme)
             {
                 ModLogger.Log($"[USER_THEME_CHECK] {jobProperty} uses user theme '{colorSchemeOriginal}' - file should be in base folder");
-                // Return original path - ApplyConfiguration already placed the themed sprite there
+                // Return original path, ApplyConfiguration already placed the themed sprite there
                 return originalPath;
             }
 
             // Build path to the themed sprite
-            // DO NOT copy files during interception - this causes "Access Denied" errors
+            // DO NOT copy files during interception, this causes "Access Denied" errors
             // Files should already be copied when configuration is applied
             var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
@@ -539,7 +538,7 @@ namespace FFTColorCustomizer.Utilities
         public void ResetAllToOriginal()
         {
             _configManager.ResetToDefaults();
-            var resetConfig = _configManager.ReloadConfig();
+            _ = _configManager.ReloadConfig();
             ApplyConfiguration();
         }
 
@@ -590,10 +589,10 @@ namespace FFTColorCustomizer.Utilities
                 "Mime_Female" => "battle_mono_w_spr.bin",
                 "Calculator_Male" => "battle_san_m_spr.bin",
                 "Calculator_Female" => "battle_san_w_spr.bin",
-                // WotL Jobs - Dark Knight (ankoku)
+                // WotL Jobs, Dark Knight (ankoku)
                 "DarkKnight_Male" => "spr_dst_bchr_ankoku_m_spr.bin",
                 "DarkKnight_Female" => "spr_dst_bchr_ankoku_w_spr.bin",
-                // WotL Jobs - Onion Knight (tama)
+                // WotL Jobs, Onion Knight (tama)
                 "OnionKnight_Male" => "spr_dst_bchr_tama_m_spr.bin",
                 "OnionKnight_Female" => "spr_dst_bchr_tama_w_spr.bin",
                 _ => null
@@ -738,7 +737,7 @@ namespace FFTColorCustomizer.Utilities
 
         private void CopySpriteForJob(string spriteName, string colorScheme)
         {
-            // Skip copying for "original" theme - it uses the game's default sprites
+            // Skip copying for "original" theme, it uses the game's default sprites
             if (colorScheme.ToLower() == "original")
             {
                 ModLogger.Log($"Skipping copy for {spriteName} - using original game sprites");
@@ -771,7 +770,7 @@ namespace FFTColorCustomizer.Utilities
         /// Normalizes character names to proper case for user theme lookups.
         /// The apply path lowercases names for folder work; user themes are stored under the
         /// registry casing, so the registry is the source of truth here. The hand-maintained
-        /// Ramza cases below stay as a fallback for inputs the registry does not know — a
+        /// Ramza cases below stay as a fallback for inputs the registry does not know, a
         /// first-letter-only recapitalization silently broke every multi-word name after
         /// Ramza's (DelitaChapter23 -> "Delitachapter23", found live 2026-08-24).
         /// </summary>
@@ -1065,7 +1064,7 @@ namespace FFTColorCustomizer.Utilities
 
         /// <summary>
         /// Applies a built-in Ramza theme by patching the NXD with pre-computed palettes.
-        /// NOTE: This is the OLD method that patches one chapter at a time. Prefer ApplyAllRamzaChaptersToNxd.
+        /// This is the OLD method that patches one chapter at a time. Prefer ApplyAllRamzaChaptersToNxd.
         /// </summary>
         private void ApplyBuiltInRamzaThemeToNxd(string characterName, string themeName)
         {

@@ -4,16 +4,16 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Maps each roster character (by Images/ folder name, the same key
-    /// <see cref="FrameLayout.For"/> uses) to its animation rig, so the walk-cycle compositor
-    /// picks the right arm-offset table. See <see cref="WalkCycleType"/> for what the two rigs
+    /// Maps each roster character to its animation rig, so the compositor picks the right arm
+    /// offset table. The key is the Images/ folder name, the same key
+    /// <see cref="FrameLayout.For"/> uses. See <see cref="WalkCycleType"/> for what the two rigs
     /// are and <see cref="WalkCycle"/> for the tables themselves.
     ///
-    /// Classification provenance (CC-36 round 3; do not reclassify from outfit appearance -
+    /// Classification provenance (do not reclassify from outfit appearance, since
     /// the rig is per-sprite DATA, not a look):
     /// 1. The game's own classic BATTLE.BIN sprite-attributes table (fftpack/battle_bin.en.bin
     ///    inside data/classic/0002.en.pac, table at offset 0x2D748, 159 entries of
-    ///    [SHP, SEQ, flying, height], read with the FFTPatcher/Shishi format: 0 = TYPE1,
+    ///    [SHP, SEQ, flying, height], read with the FFTPatcher/Shishi format, 0 = TYPE1,
     ///    1 = TYPE2). Every classic-roster character below matches that table.
     /// 2. A socket-position pixel classifier run over all 66 shipped humanoid HD sheets (the
     ///    arm tile's content centroid plus a candidate rig's offset must land at the anatomical
@@ -22,11 +22,11 @@ namespace FFTColorCustomizer.Utilities
     ///    on every character that has a classic entry, and settled the ones that don't:
     ///    DarkKnight/OnionKnight (PSP-era additions, TYPE1) and Lettie (IVC-only NPC whose
     ///    sheet's alpha mask is pixel-identical to Celia's, TYPE2).
-    /// 3. The owner's live pass. Note: Bard and Calculator LOOK fine under TYPE1 in motion,
+    /// 3. The owner's live pass. Note, Bard and Calculator LOOK fine under TYPE1 in motion,
     ///    but both the game table and zoomed per-frame renders (back-cycle f18 detaches the
     ///    fist from the cuff) prove they are TYPE2 rigs; the data verdict stands.
     ///
-    /// Monsters joined the registry in CC-46, classified from the same BATTLE.BIN table
+    /// Monsters are classified from the same BATTLE.BIN table
     /// (entries 0x86-0x9A): Goblin (0x87) and Skeleton (0x8B) are TYPE1 rigs and
     /// Mindflayer/Squid (0x8A) is TYPE2 (their sheets really are humanoid layouts), Chocobo
     /// (0x86) is CYOKO, and every other family plus Construct 8 / Steel Giant (0x9A) is MON.
@@ -56,13 +56,13 @@ namespace FFTColorCustomizer.Utilities
             "Alma", "Celia", "Elmdore", "Lettie", "Ovelia",
             "Rapha", "Reis", "Simon", "Valmafra", "Zalmour",
 
-            // Mindflayer ("Squid", classic table 0x8A) is the one TYPE2-rig monster: its
+            // Mindflayer ("Squid", classic table 0x8A) is the one TYPE2-rig monster, its
             // sheet is a genuine humanoid layout, like Goblin's and Skeleton's are TYPE1.
             "Mindflayer"
         };
 
-        // Monster rigs from the same BATTLE.BIN table (CC-46). Goblin and Skeleton are
-        // ABSENT on purpose: they are TYPE1 (the default), like any unlisted character.
+        // Monster rigs from the same BATTLE.BIN table. Goblin and Skeleton are
+        // ABSENT on purpose, they are TYPE1 (the default), like any unlisted character.
         private static readonly Dictionary<string, WalkCycleType> MonsterRigs = new Dictionary<string, WalkCycleType>(StringComparer.Ordinal)
         {
             ["Chocobo"] = WalkCycleType.Cyoko,     // 0x86 CYOKO
@@ -95,7 +95,7 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
-        /// Whether a character's sheet can play a walk cycle at all (CC-46). Monster rigs
+        /// Whether a character's sheet can play a walk cycle at all. Monster rigs
         /// always can (their tables address the sheet directly); humanoid rigs need either
         /// the standard layout the humanoid tables assume, or an explicit-rect monster sheet
         /// (Goblin, Skeleton, Mindflayer), whose content IS the standard humanoid layout even

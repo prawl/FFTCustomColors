@@ -11,16 +11,24 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-47] Take the shared rulebook so this mod builds under the same rules as the others** (opened 2026-11-02) [QUEUED]
-  - Done means: the mod carries gates/ as a subtree with its rules.json, compiles the shared logger
-    and tests in, imports the shared build settings and style file, and every gate runs green
-    locally and in CI with today's numbers recorded as the floor. No gameplay code changes. (Tech:
-    the hookup steps in gates/README.md; rules.json names prod, tests, projects and the CC prefix;
-    floor.json and the comment budget baseline come from today's files.)
-  - Verify: BuildLinked.ps1 and CI green on the hookup commit; the health numbers equal what the
-    repo's own copy printed before the swap; the build log names the rulebook version.
+- **[CC-47] Take the shared rulebook so this mod builds under the same rules as the others** (opened 2026-11-02) [BUILDING]
+  - Done means: the mod carries gates/ as a subtree with its rules.json, compiles the shared
+    tests in, imports the shared build settings and style file, and every gate runs green
+    locally and in CI with today's numbers recorded as the floor. The shared logger waits for
+    CC-2, since that card's conversion sweep is the swap. No gameplay code changes. (Tech: the
+    hookup steps in gates/README.md; rules.json names prod, tests, projects and the CC prefix;
+    floor.json, files.json and style.json come from today's files; the nullable warnings stay
+    warnings under the rulebook's warning ratchet.)
+  - Verify: BuildLinked.ps1 and CI green on the hookup commit; the build log names the rulebook
+    version; the shared contract tests replace the local ledger test and go red on a planted
+    offence.
 
 ## Backlog
+
+- [CC-48] 2026-11-03: Pay the mod's 264 nullable warnings down to zero, so the shared warnings
+  as errors switch can turn on. Until then the health gate holds the count to
+  docs/health/warnings.json, so it can only fall. (Tech: ModGatesWarningsAsErrors false in
+  Directory.Build.targets; the bulk is CS8618 at 87, CS8603 at 84 and CS8625 at 31.)
 
 - [CC-10] 2026-07-21: Investigate the mod-broken-after-game-update reports. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
@@ -60,6 +68,9 @@ that checklist.
   - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
     drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
     shape with live_log.prev.txt preserved from the prior run.
+  - The shared rulebook's logger is the target since 2026-11-03: the sweep rewrites every call
+    to the verb first facade, so finishing it against gates/Logging/ModLogger and deleting the
+    local logger, LogContractTests and FileConsoleLoggerTests is the swap.
   - Stages 1 and 2 live-verified 2026-07-21 on an owner-driven double launch: the new line
     shape (timestamps, levels, tag) confirmed in-game, and the second launch preserved the
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and

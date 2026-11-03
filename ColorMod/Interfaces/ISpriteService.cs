@@ -3,7 +3,7 @@ using FFTColorCustomizer.Configuration;
 namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
-    /// Service for managing sprite operations
+    /// Service for managing sprite operations.
     /// </summary>
     public interface ISpriteService
     {

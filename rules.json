@@ -1,0 +1,22 @@
+{
+  "prod": "ColorMod/",
+  "tests": "Tests/",
+  "ticketPrefix": "CC",
+  "projects": ["ColorMod/FFTColorCustomizer.csproj", "FFTColorCustomizer.Tests.csproj"],
+  "testProjects": ["FFTColorCustomizer.Tests.csproj"],
+  "modConfig": "ColorMod/ModConfig.json",
+  "workflow": ".github/workflows/reloaded.yml",
+  "prunedDirs": ["working", "Publish", "logs"],
+  "tempPrefixes": [
+    "UserThemeTest_", "ThemeEditorTest_", "FFTColorCustomizerTest_", "test_mod_", "SpritePathTest_",
+    "TestAppData_", "StoryTest_", "RowBuilderTest_", "RamzaPreviewTest_", "FFTColorTest_",
+    "TexCopyTest_", "ReloadedTest_", "FFTTest_"
+  ],
+  "tempKeep": [],
+  "consoleAllowlist": [],
+  "fenceExemptFiles": [],
+  "noSummaryExempt": {},
+  "imageAllowlist": {},
+  "pinTables": {},
+  "pins": {}
+}

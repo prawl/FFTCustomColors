@@ -5,7 +5,7 @@ using FFTColorCustomizer.ThemeEditor;
 
 namespace Tests.Configuration
 {
-    // --- CC-27 follow-up: the "Theme Saved" message named the wrong thing for monsters ---
+    // --- The "Theme Saved" message named the wrong thing for monsters ---
     //
     // Saving a theme for Bonesnatch (Skeleton family, rank II) showed "successfully saved the
     // Skeleton" instead of "Bonesnatch (rank 2)", and told the user to look in "Generic

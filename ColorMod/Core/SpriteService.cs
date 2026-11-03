@@ -7,7 +7,7 @@ using FFTColorCustomizer.Interfaces;
 namespace FFTColorCustomizer.Core
 {
     /// <summary>
-    /// Service for managing sprite operations
+    /// Service for managing sprite operations.
     /// </summary>
     public class SpriteService : ISpriteService
     {
@@ -183,7 +183,7 @@ namespace FFTColorCustomizer.Core
         private string GetSpriteNameForCharacter(string character)
         {
             // Map character names to sprite file names
-            // This is a simplified mapping - in production this would be more comprehensive
+            // This is a simplified mapping, in production this would be more comprehensive
             var normalizedName = character.ToLowerInvariant().Replace("_male", "_m").Replace("_female", "_f");
 
             // Handle special cases

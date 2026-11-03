@@ -5,8 +5,7 @@ using FFTColorCustomizer.Interfaces;
 namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
-    /// Static logging facade for FFT Color Mod that maintains backward compatibility
-    /// while delegating to the new ILogger interface
+    /// Static logging facade over the ILogger instance, with the old bare message entry points.
     /// </summary>
     public static class ModLogger
     {
@@ -60,7 +59,7 @@ namespace FFTColorCustomizer.Utilities
             set => Instance.LogLevel = value;
         }
 
-        // --- Typed entry points (CC-2): the migration target for every call site. When the
+        // --- Typed entry points, the migration target for every call site. When the
         // installed instance is the typed two-sink logger these flow through it (verb-aware
         // rendering, console dedup); any other ILogger (tests, DI fakes) gets the verb folded
         // into the message so captures still see one line per call. ---
