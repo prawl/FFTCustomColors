@@ -15,7 +15,9 @@
   "tempKeep": [],
   "consoleAllowlist": [],
   "fenceExemptFiles": [],
-  "noSummaryExempt": {},
+  "noSummaryExempt": {
+    "AssemblyInfo.cs": "opens with a one line comment instead of a summary block"
+  },
   "imageAllowlist": {},
   "pinTables": {},
   "pins": {}

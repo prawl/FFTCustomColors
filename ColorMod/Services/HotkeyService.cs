@@ -37,7 +37,7 @@ namespace FFTColorCustomizer.Services
 
         private void HandleF1Press()
         {
-            ModLogger.Log("Opening configuration UI (F1)");
+            ModLogger.Log(LogVerb.Ui, "Opening configuration UI (F1)");
 
             // Always call the open config UI action
             _openConfigUI();

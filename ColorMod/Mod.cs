@@ -46,7 +46,7 @@ public class Mod : IMod, IConfigurable
         ModLogger.Reset();
         ModLogger.Instance = new FileConsoleLogger();
         ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD, Maximum verbosity
-        ModLogger.Log("Mod constructor called - DEBUG BUILD v2.0.2-debug");
+        ModLogger.Log(LogVerb.Startup, "Color Customizer is loaded; press F1 in game for the theme editor");
 
         _inputSimulator = inputSimulator;
         _hotkeyHandler = hotkeyHandler;
@@ -58,8 +58,8 @@ public class Mod : IMod, IConfigurable
         // In deployment, source and mod path are the same (sprites are in the mod directory)
         _sourcePath = _modPath;
 
-        ModLogger.Log($"Mod initialized with path: {_modPath}");
-        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
+        ModLogger.LogDebug(LogVerb.Trace, $"Mod initialized with path: {_modPath}");
+        ModLogger.LogDebug(LogVerb.Trace, $"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
 
         // Initialize components
         InitializeComponents();
@@ -72,7 +72,7 @@ public class Mod : IMod, IConfigurable
         ModLogger.Instance = new FileConsoleLogger();
         ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD, Maximum verbosity for troubleshooting
 
-        ModLogger.Log("Default constructor called");
+        ModLogger.LogDebug(LogVerb.Startup, "Default constructor called");
 
         // Initialize paths first
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
@@ -80,16 +80,16 @@ public class Mod : IMod, IConfigurable
         // In deployment, source and mod path are the same (sprites are in the mod directory)
         _sourcePath = _modPath;
 
-        ModLogger.Log($"Mod initialized with path: {_modPath}");
-        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
+        ModLogger.LogDebug(LogVerb.Trace, $"Mod initialized with path: {_modPath}");
+        ModLogger.LogDebug(LogVerb.Trace, $"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
 
         // Set up production components
         _inputSimulator = new InputSimulator();
         _hotkeyHandler = new HotkeyHandler(ProcessHotkeyPress);
         _isTestEnvironment = false;
 
-        ModLogger.LogDebug($"HotkeyHandler created: {_hotkeyHandler != null}");
-        ModLogger.LogDebug($"InputSimulator created: {_inputSimulator != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"HotkeyHandler created: {_hotkeyHandler != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"InputSimulator created: {_inputSimulator != null}");
 
         // Initialize components
         InitializeComponents();
@@ -99,7 +99,7 @@ public class Mod : IMod, IConfigurable
         InitializeConfiguration(configPath);
 
         // Since Start is not being called by Reloaded-II, call it manually
-        ModLogger.LogDebug("Calling Start manually from constructor");
+        ModLogger.LogDebug(LogVerb.Startup, "Calling Start manually from constructor");
         Start(null);
     }
 
@@ -118,7 +118,7 @@ public class Mod : IMod, IConfigurable
     {
         try
         {
-            ModLogger.Log("Initializing mod components");
+            ModLogger.LogDebug(LogVerb.Startup, "Initializing mod components");
 
             // Create initializer and set up core components
             _initializer = new Core.ModComponents.ModInitializer(_modPath, _isTestEnvironment);
@@ -128,11 +128,11 @@ public class Mod : IMod, IConfigurable
             // Initialize theme coordinator
             _themeCoordinator = new ThemeCoordinator(_sourcePath, _modPath);
 
-            ModLogger.Log("Mod components initialized successfully");
+            ModLogger.LogDebug(LogVerb.Startup, "Mod components initialized successfully");
         }
         catch (Exception ex)
         {
-            ModLogger.LogError($"Failed to initialize components: {ex.Message}");
+            ModLogger.LogError(LogVerb.Startup, $"Failed to initialize components: {ex.Message}");
         }
     }
 
@@ -140,7 +140,7 @@ public class Mod : IMod, IConfigurable
     {
         try
         {
-            ModLogger.Log($"Initializing configuration at: {configPath}");
+            ModLogger.LogDebug(LogVerb.Config, $"Initializing configuration at: {configPath}");
 
             // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
             Services.CharacterServiceSingleton.SetModPath(_modPath);
@@ -167,11 +167,11 @@ public class Mod : IMod, IConfigurable
             // Apply initial configuration themes
             ApplyInitialConfiguration(themeManager);
 
-            ModLogger.Log("Configuration initialized successfully");
+            ModLogger.LogDebug(LogVerb.Config, "Configuration initialized successfully");
         }
         catch (Exception ex)
         {
-            ModLogger.LogError($"Failed to initialize configuration: {ex.Message}");
+            ModLogger.LogError(LogVerb.Config, $"Failed to initialize configuration: {ex.Message}");
         }
     }
 
@@ -196,24 +196,24 @@ public class Mod : IMod, IConfigurable
 
     public void Start(IModLoader? modLoader)
     {
-        ModLogger.Log("Start method called");
+        ModLogger.LogDebug(LogVerb.Startup, "Start method called");
 
         // Prevent duplicate initialization
         if (_hasStarted)
         {
-            ModLogger.LogDebug("Start already called, skipping duplicate initialization");
+            ModLogger.LogDebug(LogVerb.Startup, "Start already called, skipping duplicate initialization");
             return;
         }
         _hasStarted = true;
 
-        ModLogger.LogDebug($"_hotkeyHandler exists: {_hotkeyHandler != null}");
-        ModLogger.LogDebug($"_inputSimulator exists: {_inputSimulator != null}");
-        ModLogger.LogDebug($"_configCoordinator exists: {_configCoordinator != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"_hotkeyHandler exists: {_hotkeyHandler != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"_inputSimulator exists: {_inputSimulator != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"_configCoordinator exists: {_configCoordinator != null}");
 
         // Ensure configuration is initialized
         EnsureConfigurationInitialized();
-        ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
-        ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
         // Apply themes, immediately in test environment, with delay in production
         if (_configCoordinator != null && _themeCoordinator != null)
@@ -221,7 +221,7 @@ public class Mod : IMod, IConfigurable
             if (_isTestEnvironment)
             {
                 // In test environment, apply themes immediately (synchronously)
-                ModLogger.Log("Applying initial themes immediately (test environment)...");
+                ModLogger.LogDebug(LogVerb.Theme, "Applying initial themes immediately (test environment)...");
                 var config = _configCoordinator.GetConfiguration();
                 if (config != null)
                 {
@@ -234,14 +234,14 @@ public class Mod : IMod, IConfigurable
                         // Also apply generic job themes
                         _configCoordinator?.ApplyConfiguration();
 
-                        ModLogger.Log("Initial themes applied successfully (test environment)");
+                        ModLogger.LogDebug(LogVerb.Theme, "Initial themes applied successfully (test environment)");
                     }
                 }
             }
             else
             {
                 // In production, apply themes after a delay to ensure mod loader is ready
-                ModLogger.Log("Scheduling initial theme application after delay...");
+                ModLogger.LogDebug(LogVerb.Theme, "Scheduling initial theme application after delay...");
                 System.Threading.Tasks.Task.Run(async () =>
                 {
                     try
@@ -249,11 +249,11 @@ public class Mod : IMod, IConfigurable
                         // Wait for mod loader to be fully initialized
                         await System.Threading.Tasks.Task.Delay(500);
 
-                        ModLogger.Log("Applying initial themes after delay...");
+                        ModLogger.LogDebug(LogVerb.Theme, "Applying initial themes after delay...");
                         var config = _configCoordinator.GetConfiguration();
                         if (config != null)
                         {
-                            ModLogger.Log($"Config loaded, applying themes for {config.GetType().GetProperties().Length} properties");
+                            ModLogger.LogDebug(LogVerb.Theme, $"Config loaded, applying themes for {config.GetType().GetProperties().Length} properties");
                             var themeManager = _themeCoordinator.GetThemeManager();
                             if (themeManager != null)
                             {
@@ -263,39 +263,39 @@ public class Mod : IMod, IConfigurable
                                 // Also apply generic job themes after delay
                                 _configCoordinator?.ApplyConfiguration();
 
-                                ModLogger.Log("Initial themes applied successfully after delay");
+                                ModLogger.LogDebug(LogVerb.Theme, "Initial themes applied successfully after delay");
                             }
                             else
                             {
-                                ModLogger.LogWarning("ThemeManager is null after delay, cannot apply themes");
+                                ModLogger.LogWarning(LogVerb.Theme, "ThemeManager is null after delay, cannot apply themes");
                             }
                         }
                         else
                         {
-                            ModLogger.LogWarning("Configuration is null after delay, cannot apply themes");
+                            ModLogger.LogWarning(LogVerb.Theme, "Configuration is null after delay, cannot apply themes");
                         }
                     }
                     catch (Exception ex)
                     {
-                        ModLogger.LogError($"Failed to apply initial themes after delay: {ex.Message}");
+                        ModLogger.LogError(LogVerb.Theme, $"Failed to apply initial themes after delay: {ex.Message}");
                     }
                 });
             }
         }
         else
         {
-            ModLogger.LogWarning($"Cannot schedule theme application: configCoordinator={_configCoordinator != null}, themeCoordinator={_themeCoordinator != null}");
+            ModLogger.LogWarning(LogVerb.Theme, $"Cannot schedule theme application: configCoordinator={_configCoordinator != null}, themeCoordinator={_themeCoordinator != null}");
         }
 
         // Start hotkey monitoring
         if (_hotkeyHandler != null)
         {
-            ModLogger.Log("Starting hotkey monitoring");
+            ModLogger.LogDebug(LogVerb.Startup, "Starting hotkey monitoring");
             _hotkeyHandler.StartMonitoring();
         }
         else
         {
-            ModLogger.LogError("HotkeyHandler is null, cannot start monitoring!");
+            ModLogger.LogError(LogVerb.Startup, "HotkeyHandler is null, cannot start monitoring!");
         }
     }
 
@@ -303,13 +303,13 @@ public class Mod : IMod, IConfigurable
     {
         if (_configCoordinator == null)
         {
-            ModLogger.Log("Configuration coordinator is null, initializing...");
+            ModLogger.LogDebug(LogVerb.Startup, "Configuration coordinator is null, initializing...");
             var configPath = GetUserConfigPath();
             InitializeConfiguration(configPath);
         }
         else
         {
-            ModLogger.LogDebug("Configuration coordinator already initialized");
+            ModLogger.LogDebug(LogVerb.Startup, "Configuration coordinator already initialized");
         }
     }
 
@@ -320,13 +320,13 @@ public class Mod : IMod, IConfigurable
         // different files, silently reverting selections. Migration of a legacy mod-folder
         // config happens inside the resolver.
         var configPath = Configuration.ConfigPathResolver.ResolveWithMigration(_modPath, ModNamespace, ConfigFileName);
-        ModLogger.Log($"Using config: {configPath}");
+        ModLogger.LogDebug(LogVerb.Config, $"Using config: {configPath}");
         return configPath;
     }
 
-    public void Suspend() => ModLogger.Log("Mod suspended");
-    public void Resume() => ModLogger.Log("Mod resumed");
-    public void Unload() => ModLogger.Log("Mod unloading");
+    public void Suspend() => ModLogger.LogDebug(LogVerb.Startup, "Mod suspended");
+    public void Resume() => ModLogger.LogDebug(LogVerb.Startup, "Mod resumed");
+    public void Unload() => ModLogger.LogDebug(LogVerb.Startup, "Mod unloading");
 
     public bool CanUnload() => false;
     public bool CanSuspend() => false;
@@ -343,7 +343,7 @@ public class Mod : IMod, IConfigurable
 
     public void ConfigurationUpdated(Config configuration)
     {
-        ModLogger.Log("Configuration updated from Reloaded-II UI");
+        ModLogger.Log(LogVerb.Config, "Configuration updated from Reloaded-II UI");
         _configCoordinator?.UpdateConfiguration(configuration);
         ApplyConfigurationThemes(configuration);
     }
@@ -406,12 +406,12 @@ public class Mod : IMod, IConfigurable
     public string InterceptFilePath(string originalPath)
     {
         // Add diagnostic logging to debug why themes aren't loading
-        ModLogger.LogDebug($"[INTERCEPT] Called with path: {originalPath}");
+        ModLogger.LogDebug(LogVerb.Sprite, $"Called with path: {originalPath}");
 
         // Ensure configuration and theme coordinator are initialized
         if (_themeCoordinator == null)
         {
-            ModLogger.LogError("[INTERCEPT] ThemeCoordinator is null! Themes will not load!");
+            ModLogger.LogError(LogVerb.Sprite, "ThemeCoordinator is null! Themes will not load!");
             return originalPath;
         }
 
@@ -435,7 +435,7 @@ public class Mod : IMod, IConfigurable
                     // Return themed path if it exists
                     if (File.Exists(themedPath))
                     {
-                        ModLogger.LogSuccess($"[INTERCEPT] Per-job redirect: {Path.GetFileName(originalPath)} -> {jobColor}/{Path.GetFileName(themedPath)}");
+                        ModLogger.LogDebug(LogVerb.Sprite, $"Per-job redirect: {Path.GetFileName(originalPath)} -> {jobColor}/{Path.GetFileName(themedPath)}");
                         return themedPath;
                     }
                 }
@@ -446,15 +446,14 @@ public class Mod : IMod, IConfigurable
         var result = _themeCoordinator.InterceptFilePath(originalPath);
         if (result != originalPath)
         {
-            ModLogger.LogSuccess($"[INTERCEPT] Global redirect: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
-            Console.WriteLine($"[FFT Color Mod] Intercepted: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
+            ModLogger.LogDebug(LogVerb.Sprite, $"Global redirect: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
         }
         else
         {
             // Log why interception didn't happen
             if (originalPath.Contains(".bin") && originalPath.Contains("battle_"))
             {
-                ModLogger.LogDebug($"[INTERCEPT] No redirect for sprite: {Path.GetFileName(originalPath)}");
+                ModLogger.LogDebug(LogVerb.Sprite, $"No redirect for sprite: {Path.GetFileName(originalPath)}");
             }
         }
         return result;
@@ -467,7 +466,7 @@ public class Mod : IMod, IConfigurable
         var jobClassService = Services.JobClassServiceSingleton.Instance;
         if (jobClassService == null)
         {
-            ModLogger.LogDebug($"JobClassService not initialized for sprite: {spriteName}");
+            ModLogger.LogDebug(LogVerb.Sprite, $"JobClassService not initialized for sprite: {spriteName}");
             return null;
         }
 
@@ -490,10 +489,10 @@ public class Mod : IMod, IConfigurable
 
     public void ProcessHotkeyPress(int vkCode)
     {
-        ModLogger.LogDebug($"ProcessHotkeyPress called with vkCode: 0x{vkCode:X}");
+        ModLogger.LogDebug(LogVerb.Startup, $"ProcessHotkeyPress called with vkCode: 0x{vkCode:X}");
         // Ensure configuration is initialized before processing hotkeys
         EnsureConfigurationInitialized();
-        ModLogger.LogDebug($"_hotkeyManager exists: {_hotkeyManager != null}");
+        ModLogger.LogDebug(LogVerb.Startup, $"_hotkeyManager exists: {_hotkeyManager != null}");
         _hotkeyManager?.ProcessHotkeyPress(vkCode);
     }
 
@@ -503,7 +502,7 @@ public class Mod : IMod, IConfigurable
 
     protected virtual void OpenConfigurationUI()
     {
-        ModLogger.Log("Opening configuration UI");
+        ModLogger.Log(LogVerb.Ui, "Opening configuration UI");
         ConfigUIRequested?.Invoke();
 
         // Only open actual UI if not in test environment

@@ -26,7 +26,7 @@ namespace FFTColorCustomizer.Utilities
         {
             _cancellationTokenSource = new CancellationTokenSource();
             _monitorTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
-            ModLogger.Log("Hotkey monitoring started");
+            ModLogger.Log(LogVerb.Startup, "Hotkey monitoring started");
         }
 
         public void StopMonitoring()
@@ -51,7 +51,7 @@ namespace FFTColorCustomizer.Utilities
 
         private void MonitorHotkeys(CancellationToken cancellationToken)
         {
-            ModLogger.Log("Starting hotkey monitoring loop...");
+            ModLogger.LogDebug(LogVerb.Startup, "Starting hotkey monitoring loop...");
             bool wasF1Pressed = false;
 
             while (!cancellationToken.IsCancellationRequested)
@@ -63,7 +63,7 @@ namespace FFTColorCustomizer.Utilities
 
                     if (isF1Pressed && !wasF1Pressed)
                     {
-                        ModLogger.Log("F1 pressed - opening configuration");
+                        ModLogger.LogDebug(LogVerb.Ui, "F1 pressed - opening configuration");
                         _onHotkeyPressed(VK_F1);
                     }
 
@@ -73,10 +73,10 @@ namespace FFTColorCustomizer.Utilities
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError($"in hotkey loop: {ex.Message}");
+                    ModLogger.LogError(LogVerb.Startup, $"The hotkey loop failed: {ex.Message}");
                 }
             }
-            ModLogger.Log("Hotkey monitoring stopped");
+            ModLogger.LogDebug(LogVerb.Startup, "Hotkey monitoring stopped");
         }
     }
 }

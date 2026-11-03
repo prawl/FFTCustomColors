@@ -1,11 +1,11 @@
 {
- "sha": "05162098",
+ "sha": "7deba56c",
  "date": "2026-11-03",
  "dirty": true,
  "snapshot": {
-  "prod_files": 134,
-  "prod_lines": 23603,
-  "code_lines": 16723,
+  "prod_files": 135,
+  "prod_lines": 23608,
+  "code_lines": 16725,
   "test_files": 189,
   "test_lines": 32798,
   "test_ratio": 1.39,

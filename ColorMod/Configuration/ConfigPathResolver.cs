@@ -31,7 +31,7 @@ namespace FFTColorCustomizer.Configuration
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(userConfigPath)!);
                         File.Copy(modConfigPath, userConfigPath, overwrite: false);
-                        ModLogger.Log($"Migrated mod-folder config to the User path: {userConfigPath}");
+                        ModLogger.Log(LogVerb.Config, $"Migrated mod-folder config to the User path: {userConfigPath}");
                     }
 
                     return userConfigPath;
@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Configuration
             }
             catch (Exception ex)
             {
-                ModLogger.LogWarning($"Could not resolve the User config path ({ex.Message}); using the mod-folder config.");
+                ModLogger.LogWarning(LogVerb.Config, $"Could not resolve the User config path ({ex.Message}); using the mod-folder config.");
             }
 
             return Path.Combine(modPath, configFileName);

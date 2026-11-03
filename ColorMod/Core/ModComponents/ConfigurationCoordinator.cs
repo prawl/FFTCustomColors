@@ -25,7 +25,7 @@ namespace FFTColorCustomizer.Core.ModComponents
 
             // Use provided mod path if available, otherwise try to detect it
             var actualModPath = modPath ?? GetActualModPath(_configPath);
-            ModLogger.Log($"ConfigurationCoordinator using mod path: {actualModPath}");
+            ModLogger.LogDebug(LogVerb.Config, $"ConfigurationCoordinator using mod path: {actualModPath}");
             // In deployment, source path is the same as mod path
             _spriteManager = new ConfigBasedSpriteManager(actualModPath, _configManager, actualModPath);
         }
@@ -70,13 +70,13 @@ namespace FFTColorCustomizer.Core.ModComponents
 
                             if (versionedDirs.Length > 0)
                             {
-                                ModLogger.Log($"Found versioned mod directory: {versionedDirs[0]}");
+                                ModLogger.LogDebug(LogVerb.Config, $"Found versioned mod directory: {versionedDirs[0]}");
                                 return versionedDirs[0];
                             }
                         }
                         catch (Exception ex)
                         {
-                            ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
+                            ModLogger.LogWarning(LogVerb.Config, $"Error searching for versioned directories: {ex.Message}");
                         }
 
                         // Fallback to non-versioned path
@@ -221,7 +221,7 @@ namespace FFTColorCustomizer.Core.ModComponents
         public void OpenConfigurationUI(Action<Config> onConfigUpdated)
         {
             using var dpiScope = new DpiAwarenessScope();
-            ModLogger.LogDebug($"DPI awareness scope applied: {dpiScope.AppliedContext}.");
+            ModLogger.LogDebug(LogVerb.Trace, $"DPI awareness scope applied: {dpiScope.AppliedContext}.");
 
             try
             {
@@ -231,10 +231,10 @@ namespace FFTColorCustomizer.Core.ModComponents
                     // Use the already determined actual mod path instead of trying to resolve it again
                     string actualModPath = _spriteManager.GetModPath();
 
-                    ModLogger.LogDebug($"OpenConfigurationUI - configPath: {_configPath}");
-                    ModLogger.LogDebug($"OpenConfigurationUI - actualModPath: {actualModPath}");
-                    ModLogger.LogDebug($"Resources/Previews path: {Path.Combine(actualModPath, "Resources", "Previews")}");
-                    ModLogger.LogDebug($"Directory exists: {Directory.Exists(Path.Combine(actualModPath, "Resources", "Previews"))}");
+                    ModLogger.LogDebug(LogVerb.Trace, $"OpenConfigurationUI - configPath: {_configPath}");
+                    ModLogger.LogDebug(LogVerb.Trace, $"OpenConfigurationUI - actualModPath: {actualModPath}");
+                    ModLogger.LogDebug(LogVerb.Trace, $"Resources/Previews path: {Path.Combine(actualModPath, "Resources", "Previews")}");
+                    ModLogger.LogDebug(LogVerb.Trace, $"Directory exists: {Directory.Exists(Path.Combine(actualModPath, "Resources", "Previews"))}");
 
                     var form = new ConfigurationForm(config, _configPath, actualModPath);
 
@@ -248,14 +248,14 @@ namespace FFTColorCustomizer.Core.ModComponents
                         }
                         catch (Exception applyEx)
                         {
-                            ModLogger.LogError($"Configuration was saved, but applying the themes failed: {applyEx.Message}");
+                            ModLogger.LogError(LogVerb.Theme, $"Configuration was saved, but applying the themes failed: {applyEx.Message}");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"Failed to open configuration UI: {ex.Message}");
+                ModLogger.LogError(LogVerb.Ui, $"Failed to open configuration UI: {ex.Message}");
             }
         }
 

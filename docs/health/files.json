@@ -1,5 +1,5 @@
 {
- "sha": "05162098",
+ "sha": "7deba56c",
  "date": "2026-11-03",
  "columns": [
   "comments",
@@ -9,6 +9,7 @@
   "long_methods"
  ],
  "files": {
+  "AssemblyInfo.cs": [1, 1, 3, 0, 0],
   "ColorSchemeCycler.cs": [7, 1, 84, 0, 0],
   "Configuration/Config.cs": [48, 4, 601, 0, 0],
   "Configuration/ConfigMerger.cs": [2, 1, 14, 0, 0],
@@ -67,7 +68,7 @@
   "Interfaces/IServiceContainer.cs": [24, 3, 14, 0, 0],
   "Interfaces/ISpriteService.cs": [15, 3, 11, 0, 0],
   "Interfaces/IThemeService.cs": [18, 3, 13, 0, 0],
-  "Mod.cs": [62, 4, 373, 0, 1],
+  "Mod.cs": [62, 4, 372, 0, 1],
   "ModContext.cs": [2, 2, 4, 0, 0],
   "Registry/GenericCharacterRegistry.cs": [29, 3, 162, 0, 1],
   "Registry/StoryCharacterAttribute.cs": [1, 1, 10, 0, 0],

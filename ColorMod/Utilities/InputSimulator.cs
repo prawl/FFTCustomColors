@@ -60,13 +60,13 @@ namespace FFTColorCustomizer.Utilities
 
         public virtual bool SendKeyPress(int vkCode)
         {
-            ModLogger.LogDebug($"[InputSimulator] SendKeyPress called with vkCode: 0x{vkCode:X2}");
+            ModLogger.LogDebug(LogVerb.Trace, $"SendKeyPress called with vkCode: 0x{vkCode:X2}");
 
             // Try PostMessage first (works better with games)
             IntPtr gameWindow = GetForegroundWindow();
             if (gameWindow != IntPtr.Zero)
             {
-                ModLogger.LogDebug($"[InputSimulator] Found game window: {gameWindow}");
+                ModLogger.LogDebug(LogVerb.Trace, $"Found game window: {gameWindow}");
 
                 // Check if it's the FFT process
                 uint processId;
@@ -75,7 +75,7 @@ namespace FFTColorCustomizer.Utilities
 
                 if (processId == currentProcess.Id)
                 {
-                    ModLogger.LogDebug("[InputSimulator] Using PostMessage for FFT window");
+                    ModLogger.LogDebug(LogVerb.Trace, "Using PostMessage for FFT window");
 
                     // Send key down
                     bool downResult = PostMessage(gameWindow, WM_KEYDOWN, new IntPtr(vkCode), IntPtr.Zero);
@@ -84,13 +84,13 @@ namespace FFTColorCustomizer.Utilities
                     // Send key up
                     bool upResult = PostMessage(gameWindow, WM_KEYUP, new IntPtr(vkCode), IntPtr.Zero);
 
-                    ModLogger.LogDebug($"[InputSimulator] PostMessage results - Down: {downResult}, Up: {upResult}");
+                    ModLogger.LogDebug(LogVerb.Trace, $"PostMessage results - Down: {downResult}, Up: {upResult}");
                     return downResult && upResult;
                 }
             }
 
             // Fall back to SendInput if PostMessage doesn't work
-            ModLogger.LogDebug("[InputSimulator] Falling back to SendInput");
+            ModLogger.LogDebug(LogVerb.Trace, "Falling back to SendInput");
             var inputs = new INPUT[2];
 
             // Key down
@@ -122,28 +122,28 @@ namespace FFTColorCustomizer.Utilities
             };
 
             uint result = SendInput(2, inputs, Marshal.SizeOf<INPUT>());
-            ModLogger.LogDebug($"[InputSimulator] SendInput returned: {result} (expected 2)");
+            ModLogger.LogDebug(LogVerb.Trace, $"SendInput returned: {result} (expected 2)");
             return result == 2;
         }
 
         public bool SimulateMenuRefresh()
         {
-            ModLogger.LogDebug("[InputSimulator] SimulateMenuRefresh called");
+            ModLogger.LogDebug(LogVerb.Trace, "SimulateMenuRefresh called");
 
             // Send Enter key
-            ModLogger.LogDebug("[InputSimulator] Sending Enter key...");
+            ModLogger.LogDebug(LogVerb.Trace, "Sending Enter key...");
             bool enterResult = SendKeyPress(VK_RETURN);
-            ModLogger.LogDebug($"[InputSimulator] Enter key result: {enterResult}");
+            ModLogger.LogDebug(LogVerb.Trace, $"Enter key result: {enterResult}");
             if (!enterResult) return false;
 
             // Longer delay to ensure menu fully transitions
-            ModLogger.LogDebug("[InputSimulator] Waiting 500ms for menu transition...");
+            ModLogger.LogDebug(LogVerb.Trace, "Waiting 500ms for menu transition...");
             Thread.Sleep(500);
 
             // Send Escape key
-            ModLogger.LogDebug("[InputSimulator] Sending Escape key...");
+            ModLogger.LogDebug(LogVerb.Trace, "Sending Escape key...");
             bool escapeResult = SendKeyPress(VK_ESCAPE);
-            ModLogger.LogDebug($"[InputSimulator] Escape key result: {escapeResult}");
+            ModLogger.LogDebug(LogVerb.Trace, $"Escape key result: {escapeResult}");
 
             return escapeResult;
         }

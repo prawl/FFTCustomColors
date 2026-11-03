@@ -33,12 +33,12 @@ namespace FFTColorCustomizer.Core.ModComponents
             StoryCharacterRegistry.Clear();
             StoryCharacterRegistry.AutoDiscoverCharacters();
 
-            ModLogger.Log($"Registry initialized with {StoryCharacterRegistry.GetAllCharacterNames().Count()} story characters");
+            ModLogger.LogDebug(LogVerb.Startup, $"Registry initialized with {StoryCharacterRegistry.GetAllCharacterNames().Count()} story characters");
 
             // Initialize job class service with mod path
             JobClassServiceSingleton.Initialize(_modPath);
             var jobClassService = JobClassServiceSingleton.Instance;
-            ModLogger.Log($"Loaded {jobClassService.GetAllJobClasses().Count()} generic job classes from JobClasses.json");
+            ModLogger.LogDebug(LogVerb.Startup, $"Loaded {jobClassService.GetAllJobClasses().Count()} generic job classes from JobClasses.json");
         }
 
         /// <summary>
@@ -54,12 +54,12 @@ namespace FFTColorCustomizer.Core.ModComponents
 
             if (schemes.Count > 0)
             {
-                ModLogger.Log($"Auto-detected {schemes.Count} color schemes");
+                ModLogger.LogDebug(LogVerb.Startup, $"Auto-detected {schemes.Count} color schemes");
                 colorCycler.SetCurrentScheme(DefaultTheme);
             }
             else
             {
-                ModLogger.LogWarning($"No color schemes found in: {spritesPath}");
+                ModLogger.LogWarning(LogVerb.Startup, $"No color schemes found in: {spritesPath}");
                 colorCycler.SetCurrentScheme(DefaultTheme);
             }
 
@@ -137,17 +137,17 @@ namespace FFTColorCustomizer.Core.ModComponents
                     storyManager.SetCurrentTheme("Zalmour", config.Zalmour);
 
                     // Log all themes for debugging
-                    ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
-                    ModLogger.Log($"Applying initial Agrias theme: {config.Agrias}");
-                    ModLogger.Log($"Applying initial Orlandeau theme: {config.Orlandeau}");
-                    ModLogger.Log($"Applying initial Mustadio theme: {config.Mustadio}");
-                    ModLogger.Log($"Applying initial Reis theme: {config.Reis}");
-                    ModLogger.Log($"Applying initial Rapha theme: {config.Rapha}");
-                    ModLogger.Log($"Applying initial Marach theme: {config.Marach}");
-                    ModLogger.Log($"Applying initial Beowulf theme: {config.Beowulf}");
-                    ModLogger.Log($"Applying initial Meliadoul theme: {config.Meliadoul}");
-                    ModLogger.Log($"Applying initial Construct8 theme: {config.Construct8}");
-                    ModLogger.Log($"Applying initial Alma theme: {config.Alma}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Cloud theme: {config.Cloud}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Agrias theme: {config.Agrias}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Orlandeau theme: {config.Orlandeau}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Mustadio theme: {config.Mustadio}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Reis theme: {config.Reis}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Rapha theme: {config.Rapha}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Marach theme: {config.Marach}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Beowulf theme: {config.Beowulf}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Meliadoul theme: {config.Meliadoul}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Construct8 theme: {config.Construct8}");
+                    ModLogger.LogDebug(LogVerb.Theme, $"Applying initial Alma theme: {config.Alma}");
                 }
             }
         }
