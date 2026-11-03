@@ -10,31 +10,34 @@ gate lives in docs/RELEASE_SCOPE.md.
 
 ## Now (release: 0.1)
 
-- **[MG-7] Track which mods are on the shared rules so the paydown can start when all five are** (opened 2026-11-02) [QUEUED]
-  - Done means: one place in this repo says which mod runs which rulebook version and since when,
-    so anyone can see when the last mod is in and the paydown of the recorded debt can begin.
-    Order after Treasure Master, on v0.1.0 since 2026-11-03: Living Weapons, Offensive Chemist,
-    Color Customizer, and the private mod once its open branch lands. (Tech: a table in README.md
-    with mod, version taken, date and hookup commit; each hookup updates its row in the same
-    session.)
-  - Verify: the table names Treasure Master at v0.1.0 with its hookup commit and gains a row with
-    each later hookup; Check.ps1 passes with the table in place.
-- **[MG-15] Keep the rulebook quiet when a mod's own tests load the gate script** (opened 2026-11-03) [BUILDING]
-  - Done means: loading gates.ps1 prints nothing, and the line naming the rulebook version moves
-    into the first gate, so a mod test that dot-sources its pipeline script and reads the output
-    gets its answer and not the banner. Living Weapons has nine such tests. (Tech: the Write-Host
-    moves from the file body into Invoke-ManifestGate; VERSION 0.1.1; tag v0.1.1.)
-  - Verify: Check.ps1 green and its log still names the version from the manifest gate; the nine
-    Living Weapons tests pass on the v0.1.1 subtree.
-- **[MG-16] Let a mod with old health records start its floor from today's tree** (opened 2026-11-03) [BUILDING]
-  - Done means: the first floor of a repo is its line in the sand even when release records from
-    earlier months hold better numbers, so day one debt is recorded and not refused. Living
-    Weapons' first floor was refused against its v2.1.0 record. (Tech: floor.json carries since,
-    the first floor's date; since_adoption drops records older than it from the ratchet and the
-    floor; the trend still reads every record.)
-  - Verify: health.py --selftest covers a record older than the floor being history and a newer
-    one still setting the bar; Living Weapons' floor --write succeeds on v0.1.1 and its ratchet
-    runs green.
+- **[MG-14] Let the pre-commit hook write the file rows, so nobody runs floor --write by hand** (opened 2026-11-02) [QUEUED]
+  - Done means: when a commit touches production code in a repo that has rules.json, the
+    shared pre-commit hook runs health.py floor --write and stages docs/health/files.json and
+    floor.json, so a shrink, a new file or a gone file never reaches the ratchet unrecorded. A
+    worse floor still refuses, with the confession row, since widening stays the owner's call.
+    (Tech: the pre-commit in the setup repo; floor --write exits 1 on a worse floor, which
+    refuses the commit; the two files are added to the index after a successful write.)
+  - Verify: in a scratch repo on the rulebook, a commit that shrinks a file lands with the
+    updated rows staged and the ratchet green right after; a commit that widens a row is
+    refused with the row to paste; Check.ps1 green here.
+- **[MG-19] Hold a mod's warning count to a record while it pays its warnings down** (opened 2026-11-03) [BUILDING]
+  - Done means: a mod that turns the shared warnings as errors switch off gets its compiler
+    warnings counted on every build and held to docs/health/warnings.json, so the count can
+    only fall; the first run writes the record, a lower count moves it, and a higher count is
+    refused with the confession row. Nothing changes for a mod on warnings as errors. (Tech:
+    Invoke-WarningRatchet inside Invoke-HealthGate, armed by ModGatesWarningsAsErrors false in
+    the root Directory.Build.targets; a full rebuild of every non test project in rules.json,
+    distinct warning lines counted; the record holds since, warnings and an optional card.)
+  - Verify: Color Customizer's first deploy writes the record at its 264 warnings; a planted
+    unused variable is refused with the row to paste and passes again once removed; Check.ps1
+    green here.
+- **[MG-20] Let the image literal lists work when two production files share a name** (opened 2026-11-03) [BUILDING]
+  - Done means: the allow list and pin table checks no longer crash when two production files
+    share a file name, which Color Customizer has twice; a name counts as still needing its
+    entry when any file of that name does. (Tech: ToLookup by file name instead of
+    ToDictionary in ImageLiteralContractTests.)
+  - Verify: the shared tests pass in Color Customizer with its two StoryCharacterRegistry.cs
+    and two ModInitializer.cs files; Check.ps1 green here.
 
 ## Backlog
 
@@ -42,9 +45,18 @@ gate lives in docs/RELEASE_SCOPE.md.
   files hold design notes with em dashes that are not game text.
 - [MG-6] 2026-11-02: Have the shared setup's /gates status print the rulebook version a repo is
   on, so one screen shows both the session gates and the build gates.
-- [MG-14] 2026-11-02: Have the pre-commit hook write the file rows, so nobody runs floor --write
-  by hand and a shrink is never left for the ratchet to ask about. (Tech: the shared pre-commit in
-  the setup repo runs health.py floor --write when rules.json is present and stages files.json.)
+- [MG-17] 2026-11-03: A mod written in Python gets only the ledger, style and comment contracts
+  from the rulebook, because the health tape measure and the comment budget read C# alone and
+  the health ratchet refuses a repo with zero production rows; decide whether health.py and the
+  comment tests should measure Python under tools, including tools/lib, which the comment scan
+  skips today. Found hooking up Offensive Chemist, which links seven test files by name instead
+  of Tests/** and leaves the health gate out of its pipeline.
+- [MG-18] 2026-11-03: Decide whether the ledger may let Now go empty, since the owner finds the
+  refusal at every last exit annoying and the reason behind it is not written down anywhere; the
+  rule has been in the ledger test since its first day (Living Weapons f338eb84, 2026-07-05) and
+  reads as a forcing function, so each exit also names what comes next. (Tech: the NotEmpty
+  assertion in TodoContractTests and the "Now never goes empty" line in the global CLAUDE.md; a
+  change here lands in every repo on the rulebook at its next subtree pull.)
 
 ## Walled (blocked by engine / external)
 

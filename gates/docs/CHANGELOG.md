@@ -8,6 +8,22 @@ with a date and no hash.
 
 ## 0.1 cycle
 
+- [MG-7] SHIPPED 17fee2d 2026-11-03: The README now says which mod runs which rulebook version
+  since when, with its hookup commit, so anyone can see when the last mod is in and the paydown
+  of the recorded debt can begin. Treasure Master is on v0.1.0 and Living Weapons on v0.1.1;
+  Offensive Chemist, Color Customizer and the private mod are not yet. (Tech: the Who is on it
+  table in README.md; each hookup updates its row in the same session.)
+- [MG-16] SHIPPED 51d20d5 2026-11-03: A mod that already had months of release records can
+  now take the rulebook without being told its code is worse than its best month. The first
+  floor is the line in the sand, and older records feed the trend but never set a bar. Living
+  Weapons' first floor was refused against its v2.1.0 record before this. (Tech: floor.json
+  carries since, the first floor's date; since_adoption filters records in the ratchet and the
+  floor; three new selftest checks.)
+- [MG-15] SHIPPED a0b2da8 2026-11-03: Loading the gate script now prints nothing, and the first
+  gate names the rulebook version instead, so a mod test that dot-sources its pipeline script
+  and reads the output gets its answer and not the banner. Living Weapons has nine such tests.
+  (Tech: the Write-Host moved from the body of gates.ps1 into Invoke-ManifestGate; VERSION
+  0.1.1; tag v0.1.1 at 51d20d5.)
 - [MG-11] SHIPPED 3da7098 2026-11-03: The rulebook now has a version a mod takes by name, v0.1.0,
   so two mods on one tag run the same rules and a change here reaches a mod only when it pulls
   the next tag. Treasure Master took it first and runs green on it locally and in CI, and
