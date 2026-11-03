@@ -153,7 +153,7 @@ namespace FFTColorCustomizer.Configuration
 
         private void OnThemeDeleted(object? sender, ThemeDeletedEventArgs e)
         {
-            Utilities.ModLogger.Log($"[CONFIG_FORM] OnThemeDeleted received: Job={e.JobName}, Theme={e.ThemeName}");
+            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"OnThemeDeleted received: Job={e.JobName}, Theme={e.ThemeName}");
             // Refresh dropdowns for the job whose theme was deleted
             RefreshDropdownsForJob(e.JobName);
         }
@@ -272,23 +272,23 @@ namespace FFTColorCustomizer.Configuration
                 MessageBox.Show(message, "Ramza Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                Utilities.ModLogger.Log($"[RAMZA_THEME] Saved theme for {args.JobName}");
+                Utilities.ModLogger.Log(LogVerb.Ui, $"Saved theme for {args.JobName}");
             }
             else
             {
                 MessageBox.Show($"Failed to save Ramza {chapterDisplay} theme.\n\nCheck the mod logs for details.",
                     "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-                Utilities.ModLogger.Log($"[RAMZA_THEME] Failed to save theme for {args.JobName}");
+                Utilities.ModLogger.LogError(LogVerb.Ui, $"Failed to save theme for {args.JobName}");
             }
         }
 
         private void RefreshDropdownsForJob(string jobName)
         {
-            Utilities.ModLogger.Log($"[REFRESH] RefreshDropdownsForJob called for: {jobName}");
+            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"RefreshDropdownsForJob called for: {jobName}");
             var userThemeService = new UserThemeService(_modPath!);
             var userThemes = userThemeService.GetUserThemes(jobName);
-            Utilities.ModLogger.Log($"[REFRESH] User themes for {jobName}: [{string.Join(", ", userThemes)}]");
+            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"User themes for {jobName}: [{string.Join(", ", userThemes)}]");
 
             int comboBoxCount = 0;
             int matchCount = 0;
@@ -305,7 +305,7 @@ namespace FFTColorCustomizer.Configuration
                         if (tag.JobName != null)
                         {
                             var comboJobName = CharacterRowBuilder.ConvertJobNameToPropertyFormat(tag.JobName.ToString());
-                            Utilities.ModLogger.Log($"[REFRESH] Checking comboBox: tag.JobName={tag.JobName}, converted={comboJobName}, target={jobName}");
+                            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Checking comboBox: tag.JobName={tag.JobName}, converted={comboJobName}, target={jobName}");
                             // Monster tier rows carry their family on the tag and share one
                             // tier-agnostic user-theme key (== family name). When that key's themes
                             // change, refresh every tier row of the family. Read Family via
@@ -316,19 +316,19 @@ namespace FFTColorCustomizer.Configuration
                             if (comboJobName == jobName || isMonsterMatch)
                             {
                                 matchCount++;
-                                Utilities.ModLogger.Log($"[REFRESH] MATCH! Refreshing comboBox for {jobName}");
+                                Utilities.ModLogger.LogDebug(LogVerb.Ui, $"MATCH! Refreshing comboBox for {jobName}");
                                 comboBox.RefreshUserThemes(userThemes);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        Utilities.ModLogger.Log($"[REFRESH] Error checking tag: {ex.Message}");
+                        Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Error checking tag: {ex.Message}");
                     }
                 }
             }
 
-            Utilities.ModLogger.Log($"[REFRESH] Found {comboBoxCount} ThemeComboBox controls, {matchCount} matched {jobName}");
+            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Found {comboBoxCount} ThemeComboBox controls, {matchCount} matched {jobName}");
         }
 
         private void LoadGenericCharacters(ref int row)
@@ -630,7 +630,7 @@ namespace FFTColorCustomizer.Configuration
 
         private void VerifyAllSelections()
         {
-            ModLogger.Log("Verifying all ComboBox selections...");
+            ModLogger.LogDebug(LogVerb.Ui, "Verifying all ComboBox selections...");
 
             foreach (Control control in _mainPanel.Controls)
             {
@@ -642,12 +642,12 @@ namespace FFTColorCustomizer.Configuration
                         var currentValue = comboBox.SelectedItem;
                         if (currentValue == null || !currentValue.Equals(tag.ExpectedValue))
                         {
-                            ModLogger.Log($"Correcting {tag.JobName}: was {currentValue}, setting to {tag.ExpectedValue}");
+                            ModLogger.LogDebug(LogVerb.Ui, $"Correcting {tag.JobName}: was {currentValue}, setting to {tag.ExpectedValue}");
                             comboBox.SelectedItem = tag.ExpectedValue;
                         }
                         else
                         {
-                            ModLogger.Log($"{tag.JobName} is correctly set to {tag.ExpectedValue}");
+                            ModLogger.LogDebug(LogVerb.Ui, $"{tag.JobName} is correctly set to {tag.ExpectedValue}");
                         }
                     }
                 }

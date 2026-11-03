@@ -98,7 +98,7 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             var themes = GetUserThemes(jobName);
             var result = themes.Contains(themeName);
-            ModLogger.Log($"[USER_THEME_SVC] IsUserTheme({jobName}, {themeName}) -> themes=[{string.Join(", ", themes)}], result={result}");
+            ModLogger.LogDebug(LogVerb.Ui, $"IsUserTheme({jobName}, {themeName}) -> themes=[{string.Join(", ", themes)}], result={result}");
             return result;
         }
 
@@ -106,7 +106,7 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             var palettePath = Path.Combine(_basePath, "UserThemes", jobName, themeName, "palette.bin");
             var exists = File.Exists(palettePath);
-            ModLogger.Log($"[USER_THEME_SVC] GetUserThemePalettePath({jobName}, {themeName}) -> {palettePath}, exists={exists}");
+            ModLogger.LogDebug(LogVerb.Ui, $"GetUserThemePalettePath({jobName}, {themeName}) -> {palettePath}, exists={exists}");
             return exists ? palettePath : null;
         }
 
@@ -235,11 +235,11 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private Dictionary<string, List<string>> LoadRegistry()
         {
-            ModLogger.Log($"[USER_THEME_SVC] LoadRegistry from: {_registryPath}");
+            ModLogger.LogDebug(LogVerb.Ui, $"LoadRegistry from: {_registryPath}");
 
             if (_registryPath == null || !File.Exists(_registryPath))
             {
-                ModLogger.Log($"[USER_THEME_SVC] Registry not found or path is null");
+                ModLogger.LogDebug(LogVerb.Ui, $"Registry not found or path is null");
                 return new Dictionary<string, List<string>>();
             }
 
@@ -247,10 +247,10 @@ namespace FFTColorCustomizer.ThemeEditor
             var registry = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json)
                    ?? new Dictionary<string, List<string>>();
 
-            ModLogger.Log($"[USER_THEME_SVC] Loaded registry with {registry.Count} jobs");
+            ModLogger.LogDebug(LogVerb.Ui, $"Loaded registry with {registry.Count} jobs");
             foreach (var kvp in registry)
             {
-                ModLogger.Log($"[USER_THEME_SVC]   {kvp.Key}: [{string.Join(", ", kvp.Value)}]");
+                ModLogger.LogDebug(LogVerb.Ui, $"{kvp.Key}: [{string.Join(", ", kvp.Value)}]");
             }
 
             return registry;

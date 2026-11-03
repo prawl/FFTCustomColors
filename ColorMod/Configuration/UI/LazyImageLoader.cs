@@ -31,7 +31,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
             if (IsInViewport())
             {
-                ModLogger.Log($"[LAZY] Loading images for carousel at Y={_carousel.Location.Y}");
+                ModLogger.LogDebug(LogVerb.Ui, $"Loading images for carousel at Y={_carousel.Location.Y}");
                 _hasLoaded = true;
                 _carousel.HasImagesLoaded = true;
                 ImageLoadRequested?.Invoke(this, EventArgs.Empty);

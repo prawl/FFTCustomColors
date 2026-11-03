@@ -12,13 +12,13 @@ namespace FFTColorCustomizer.Debug
             var assembly = Assembly.GetExecutingAssembly();
             var resources = assembly.GetManifestResourceNames();
 
-            Console.WriteLine($"Total embedded resources: {resources.Length}");
+            Utilities.ModLogger.LogDebug(LogVerb.Trace, $"Total embedded resources: {resources.Length}");
 
             var squireOriginal = resources.Where(r => r.Contains("squire_male_original")).ToList();
-            Console.WriteLine($"\nSquire Male Original resources ({squireOriginal.Count}):");
+            Utilities.ModLogger.LogDebug(LogVerb.Trace, $"Squire Male Original resources ({squireOriginal.Count})");
             foreach (var resource in squireOriginal.OrderBy(r => r))
             {
-                Console.WriteLine($"  - {resource}");
+                Utilities.ModLogger.LogDebug(LogVerb.Trace, $"Resource {resource}");
             }
 
             // Check for directional sprites
@@ -28,7 +28,7 @@ namespace FFTColorCustomizer.Debug
                 r.Contains("_s.png") || r.Contains("_sw.png") ||
                 r.Contains("_w.png") || r.Contains("_nw.png"));
 
-            Console.WriteLine($"\nDirectional sprites found: {directionalCount}");
+            Utilities.ModLogger.LogDebug(LogVerb.Trace, $"Directional sprites found {directionalCount}");
         }
     }
 }

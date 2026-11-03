@@ -115,22 +115,22 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void OnDeleteClick(object sender, EventArgs e)
         {
-            ModLogger.Log($"[MY_THEMES] OnDeleteClick called");
+            ModLogger.LogDebug(LogVerb.Ui, $"OnDeleteClick called");
             var selectedNode = _themesTreeView.SelectedNode;
-            ModLogger.Log($"[MY_THEMES] SelectedNode: {selectedNode?.Text}, Tag: {selectedNode?.Tag}");
+            ModLogger.LogDebug(LogVerb.Ui, $"SelectedNode: {selectedNode?.Text}, Tag: {selectedNode?.Tag}");
             if (selectedNode?.Tag is string jobName)
             {
                 var themeName = selectedNode.Text;
-                ModLogger.Log($"[MY_THEMES] Deleting theme: {themeName} for job: {jobName}");
+                ModLogger.Log(LogVerb.Ui, $"Deleting theme: {themeName} for job: {jobName}");
                 _userThemeService.DeleteTheme(jobName, themeName);
                 LoadThemes();
-                ModLogger.Log($"[MY_THEMES] Raising ThemeDeleted event, subscribers: {(ThemeDeleted != null ? "yes" : "no")}");
+                ModLogger.LogDebug(LogVerb.Ui, $"Raising ThemeDeleted event, subscribers: {(ThemeDeleted != null ? "yes" : "no")}");
                 ThemeDeleted?.Invoke(this, new ThemeDeletedEventArgs(jobName, themeName));
-                ModLogger.Log($"[MY_THEMES] ThemeDeleted event raised");
+                ModLogger.LogDebug(LogVerb.Ui, $"ThemeDeleted event raised");
             }
             else
             {
-                ModLogger.Log($"[MY_THEMES] No theme node selected (Tag is not a string)");
+                ModLogger.LogDebug(LogVerb.Ui, $"No theme node selected (Tag is not a string)");
             }
         }
 

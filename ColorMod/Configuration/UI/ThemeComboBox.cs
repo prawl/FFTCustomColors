@@ -74,10 +74,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 Items.AddRange(_themeItems.ToArray());
 
                 // Debug logging
-                Utilities.ModLogger.LogDebug($"[ThemeComboBox] SetThemes called with {_themeItems.Count} themes");
+                Utilities.ModLogger.LogDebug(LogVerb.Ui, $"SetThemes called with {_themeItems.Count} themes");
                 if (_themeItems.Count <= 5)
                 {
-                    Utilities.ModLogger.LogDebug($"[ThemeComboBox] Themes: {string.Join(", ", _themeItems.Select(t => t.Value))}");
+                    Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Themes: {string.Join(", ", _themeItems.Select(t => t.Value))}");
                 }
             }
             finally
@@ -122,14 +122,14 @@ namespace FFTColorCustomizer.Configuration.UI
         public void RefreshUserThemes(IEnumerable<string> userThemes)
         {
             var currentSelection = SelectedThemeValue;
-            Utilities.ModLogger.Log($"[COMBO_REFRESH] RefreshUserThemes called, currentSelection={currentSelection}, _builtInThemes.Count={_builtInThemes.Count}");
+            Utilities.ModLogger.LogDebug(LogVerb.Ui, $"RefreshUserThemes called, currentSelection={currentSelection}, _builtInThemes.Count={_builtInThemes.Count}");
 
             _isUpdating = true;
             try
             {
                 // Rebuild from built-in themes
                 _themeItems = _builtInThemes.Select(t => new ThemeItem(t)).ToList();
-                Utilities.ModLogger.Log($"[COMBO_REFRESH] Rebuilt _themeItems from built-in themes, count={_themeItems.Count}");
+                Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Rebuilt _themeItems from built-in themes, count={_themeItems.Count}");
 
                 var userThemeList = userThemes.ToList();
                 if (userThemeList.Count > 0)
@@ -139,12 +139,12 @@ namespace FFTColorCustomizer.Configuration.UI
 
                     // Add user themes
                     _themeItems.AddRange(userThemeList.Select(t => new ThemeItem(t)));
-                    Utilities.ModLogger.Log($"[COMBO_REFRESH] Added {userThemeList.Count} user themes");
+                    Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Added {userThemeList.Count} user themes");
                 }
 
                 Items.Clear();
                 Items.AddRange(_themeItems.ToArray());
-                Utilities.ModLogger.Log($"[COMBO_REFRESH] Final Items.Count={Items.Count}");
+                Utilities.ModLogger.LogDebug(LogVerb.Ui, $"Final Items.Count={Items.Count}");
 
                 // Restore selection only if it still exists in the list
                 bool selectionChanged = false;
