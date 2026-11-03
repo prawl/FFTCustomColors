@@ -5,7 +5,7 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests
 {
-    public class ConfigStartupOverrideTest
+    public class ConfigStartupOverrideTest : IDisposable
     {
         private readonly string _testConfigPath;
         private readonly string _testConfigDir;
