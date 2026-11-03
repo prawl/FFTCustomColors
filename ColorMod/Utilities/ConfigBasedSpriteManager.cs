@@ -974,12 +974,12 @@ namespace FFTColorCustomizer.Utilities
                 // Read original sprite and user palette
                 var originalSprite = File.ReadAllBytes(originalFile);
                 var userPalette = File.ReadAllBytes(palettePath);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Original sprite size: {originalSprite.Length}, Palette size: {userPalette.Length}");
+                ModLogger.LogDebug(LogVerb.Sprite, $"Story character original sprite size: {originalSprite.Length}, palette size: {userPalette.Length}");
 
                 // Validate palette size (should be 512 bytes)
                 if (userPalette.Length != 512)
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Invalid palette size: {userPalette.Length} (expected 512)");
+                    ModLogger.LogWarning(LogVerb.Sprite, $"Invalid story character palette size: {userPalette.Length} (expected 512)");
                     return;
                 }
 

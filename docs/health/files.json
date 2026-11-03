@@ -1,5 +1,5 @@
 {
- "sha": "7deba56c",
+ "sha": "d2e0062a",
  "date": "2026-11-03",
  "columns": [
   "comments",
@@ -58,7 +58,7 @@
   "Core/PathResolver.cs": [11, 3, 109, 0, 0],
   "Core/ServiceContainer.cs": [12, 3, 164, 0, 0],
   "Core/ServiceProvider.cs": [26, 3, 124, 0, 0],
-  "Core/SpriteService.cs": [13, 3, 173, 0, 0],
+  "Core/SpriteService.cs": [13, 3, 172, 0, 0],
   "Core/ThemeService.cs": [19, 3, 118, 0, 0],
   "DebugResources.cs": [2, 1, 27, 0, 0],
   "Interfaces/IConfigurationService.cs": [18, 3, 12, 0, 0],
