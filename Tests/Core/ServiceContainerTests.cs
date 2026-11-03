@@ -12,7 +12,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger = new ConsoleLogger();
+            var logger = new NullLogger();
 
             // Act
             container.Register<ILogger>(logger);
@@ -29,7 +29,7 @@ namespace FFTColorCustomizer.Tests.Core
             var container = new ServiceContainer();
 
             // Act
-            container.Register<ILogger>(() => new ConsoleLogger("Test"));
+            container.Register<ILogger>(() => new NullLogger());
             var resolved1 = container.Resolve<ILogger>();
             var resolved2 = container.Resolve<ILogger>();
 
@@ -44,7 +44,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger = new ConsoleLogger();
+            var logger = new NullLogger();
 
             // Act
             container.RegisterSingleton<ILogger>(logger);
@@ -67,7 +67,7 @@ namespace FFTColorCustomizer.Tests.Core
             container.RegisterSingleton<ILogger>(() =>
             {
                 createCount++;
-                return new ConsoleLogger($"Test{createCount}");
+                return new NullLogger();
             });
 
             var resolved1 = container.Resolve<ILogger>();
@@ -97,8 +97,8 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger1 = new ConsoleLogger("First");
-            var logger2 = new ConsoleLogger("Second");
+            var logger1 = new NullLogger();
+            var logger2 = new NullLogger();
 
             // Act
             container.Register<ILogger>(logger1);
@@ -114,7 +114,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            container.Register<ILogger>(new ConsoleLogger());
+            container.Register<ILogger>(new NullLogger());
 
             // Act
             var success = container.TryResolve<ILogger>(out var logger);
@@ -143,7 +143,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger = new ConsoleLogger();
+            var logger = new NullLogger();
             var pathResolver = new PathResolver("/root", "/source", "/user");
 
             // Act
@@ -163,11 +163,11 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger = new ConsoleLogger();
+            var logger = new NullLogger();
 
             // Act
-            container.Register<ConsoleLogger>(logger);
-            var resolved = container.Resolve<ConsoleLogger>();
+            container.Register<NullLogger>(logger);
+            var resolved = container.Resolve<NullLogger>();
 
             // Assert
             Assert.Same(logger, resolved);
@@ -178,7 +178,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            var logger = new ConsoleLogger();
+            var logger = new NullLogger();
             container.RegisterSingleton<ILogger>(logger);
 
             // Act
@@ -196,7 +196,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var container = new ServiceContainer();
-            container.Register<ILogger>(() => new ConsoleLogger());
+            container.Register<ILogger>(() => new NullLogger());
 
             // Act
             var mainLogger = container.Resolve<ILogger>();
@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.Tests.Core
             var iterations = 100;
             var results = new ILogger[iterations];
 
-            container.RegisterSingleton<ILogger>(() => new ConsoleLogger());
+            container.RegisterSingleton<ILogger>(() => new NullLogger());
 
             // Act - resolve from multiple threads
             System.Threading.Tasks.Parallel.For(0, iterations, i =>

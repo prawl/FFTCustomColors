@@ -44,25 +44,25 @@ namespace FFTColorCustomizer.Configuration
             // If we already have the lock (recursive call), use cache directly
             if (Monitor.IsEntered(_lockObject) && _cachedConfig != null)
             {
-                ModLogger.LogDebug(LogVerb.Config, $"Using cached config (already in lock)");
+                ModLogger.Debug(LogVerb.Config, $"Using cached config (already in lock)");
                 return _cachedConfig;
             }
 
             lock (_lockObject)
             {
-                ModLogger.LogDebug(LogVerb.Config, $"Loading config from: {_configPath}");
+                ModLogger.Debug(LogVerb.Config, $"Loading config from: {_configPath}");
 
                 // If we have a cached config, return it
                 if (_cachedConfig != null)
                 {
-                    ModLogger.LogDebug(LogVerb.Config, $"Using cached config");
+                    ModLogger.Debug(LogVerb.Config, $"Using cached config");
                     return _cachedConfig;
                 }
 
                 // No cache, need to load or create
                 if (!File.Exists(_configPath))
                 {
-                    ModLogger.LogDebug(LogVerb.Config, $"Config file does not exist, creating new config");
+                    ModLogger.Debug(LogVerb.Config, $"Config file does not exist, creating new config");
                     _cachedConfig = new Config();
                     return _cachedConfig;
                 }
@@ -71,14 +71,14 @@ namespace FFTColorCustomizer.Configuration
                 try
                 {
                     var json = File.ReadAllText(_configPath);
-                    ModLogger.LogDebug(LogVerb.Config, $"Read JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
+                    ModLogger.Debug(LogVerb.Config, $"Read JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
                     _cachedConfig = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
-                    ModLogger.LogDebug(LogVerb.Config, $"Loaded config - Squire_Male: {_cachedConfig.Squire_Male}");
+                    ModLogger.Debug(LogVerb.Config, $"Loaded config - Squire_Male: {_cachedConfig.Squire_Male}");
                     return _cachedConfig;
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Config, $"Error loading config: {ex.Message}");
+                    ModLogger.Error(LogVerb.Config, $"Error loading config: {ex.Message}");
                     _cachedConfig = new Config();
                     return _cachedConfig;
                 }
@@ -101,25 +101,25 @@ namespace FFTColorCustomizer.Configuration
             {
                 try
                 {
-                    ModLogger.LogDebug(LogVerb.Config, $"Saving config - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}");
+                    ModLogger.Debug(LogVerb.Config, $"Saving config - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}");
                     var json = JsonConvert.SerializeObject(config, _jsonSettings);
-                    ModLogger.LogDebug(LogVerb.Config, $"Serialized JSON (first 500 chars): {json.Substring(0, Math.Min(500, json.Length))}");
+                    ModLogger.Debug(LogVerb.Config, $"Serialized JSON (first 500 chars): {json.Substring(0, Math.Min(500, json.Length))}");
                     var directory = Path.GetDirectoryName(_configPath);
                     if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                     {
                         Directory.CreateDirectory(directory);
                     }
-                    ModLogger.LogDebug(LogVerb.Config, $"Writing config to: {_configPath}");
+                    ModLogger.Debug(LogVerb.Config, $"Writing config to: {_configPath}");
                     File.WriteAllText(_configPath, json);
 
                     // Update cache and timestamp
                     _cachedConfig = config;
 
-                    ModLogger.LogDebug(LogVerb.Config, $"Config saved successfully");
+                    ModLogger.Debug(LogVerb.Config, $"Config saved successfully");
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Config, $"Error saving config: {ex.Message}");
+                    ModLogger.Error(LogVerb.Config, $"Error saving config: {ex.Message}");
                 }
             }
         }
@@ -133,10 +133,10 @@ namespace FFTColorCustomizer.Configuration
 
         public void SetColorSchemeForJob(string jobProperty, string colorScheme)
         {
-            ModLogger.LogDebug(LogVerb.Config, $"SetColorSchemeForJob START: {jobProperty} = {colorScheme}");
+            ModLogger.Debug(LogVerb.Config, $"SetColorSchemeForJob START: {jobProperty} = {colorScheme}");
 
             // Add thread info to debug potential race conditions
-            ModLogger.LogDebug(LogVerb.Config, $"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+            ModLogger.Debug(LogVerb.Config, $"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
 
             // Use lock to prevent race conditions
             lock (_lockObject)
@@ -148,19 +148,19 @@ namespace FFTColorCustomizer.Configuration
                     // Serialize and deserialize to create a deep copy
                     var json = JsonConvert.SerializeObject(_cachedConfig, _jsonSettings);
                     config = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
-                    ModLogger.LogDebug(LogVerb.Config, $"Created deep copy from cache");
-                    ModLogger.LogDebug(LogVerb.Config, $"Deep copy initial state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
+                    ModLogger.Debug(LogVerb.Config, $"Created deep copy from cache");
+                    ModLogger.Debug(LogVerb.Config, $"Deep copy initial state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
                 }
                 else
                 {
                     // Load from disk if no cache
                     config = LoadConfig();
-                    ModLogger.LogDebug(LogVerb.Config, $"Loaded from disk");
-                    ModLogger.LogDebug(LogVerb.Config, $"Loaded config state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
+                    ModLogger.Debug(LogVerb.Config, $"Loaded from disk");
+                    ModLogger.Debug(LogVerb.Config, $"Loaded config state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
                 }
 
                 // Log current config state BEFORE change
-                ModLogger.LogDebug(LogVerb.Config, $"BEFORE - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
+                ModLogger.Debug(LogVerb.Config, $"BEFORE - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
 
                 // List all theme properties
                 var allProperties = typeof(Config).GetProperties()
@@ -168,56 +168,56 @@ namespace FFTColorCustomizer.Configuration
                                (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")))
                     .Select(p => p.Name)
                     .ToList();
-                ModLogger.LogDebug(LogVerb.Config, $"Available theme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
+                ModLogger.Debug(LogVerb.Config, $"Available theme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
 
-                ModLogger.LogDebug(LogVerb.Config, $"Looking for property: '{jobProperty}'");
+                ModLogger.Debug(LogVerb.Config, $"Looking for property: '{jobProperty}'");
                 var propertyInfo = typeof(Config).GetProperty(jobProperty);
 
                 if (propertyInfo != null)
                 {
-                    ModLogger.LogDebug(LogVerb.Config, $"Property found: {propertyInfo.Name}, Type: {propertyInfo.PropertyType}");
+                    ModLogger.Debug(LogVerb.Config, $"Property found: {propertyInfo.Name}, Type: {propertyInfo.PropertyType}");
 
                     if (propertyInfo.PropertyType == typeof(string))
                     {
-                        ModLogger.LogDebug(LogVerb.Config, $"About to set property '{propertyInfo.Name}' on config object");
-                        ModLogger.LogDebug(LogVerb.Config, $"Config object type: {config.GetType().FullName}");
-                        ModLogger.LogDebug(LogVerb.Config, $"Setting value to: {colorScheme}");
+                        ModLogger.Debug(LogVerb.Config, $"About to set property '{propertyInfo.Name}' on config object");
+                        ModLogger.Debug(LogVerb.Config, $"Config object type: {config.GetType().FullName}");
+                        ModLogger.Debug(LogVerb.Config, $"Setting value to: {colorScheme}");
 
                         // Get value before setting
                         var beforeValue = propertyInfo.GetValue(config);
-                        ModLogger.LogDebug(LogVerb.Config, $"Property value BEFORE: {beforeValue}");
+                        ModLogger.Debug(LogVerb.Config, $"Property value BEFORE: {beforeValue}");
 
                         propertyInfo.SetValue(config, colorScheme);
 
                         // Get value after setting
                         var afterValue = propertyInfo.GetValue(config);
-                        ModLogger.LogDebug(LogVerb.Config, $"Property value AFTER: {afterValue}");
+                        ModLogger.Debug(LogVerb.Config, $"Property value AFTER: {afterValue}");
 
                         // Check if other properties were accidentally modified
-                        ModLogger.LogDebug(LogVerb.Config, $"After setting {jobProperty}, checking other properties:");
-                        ModLogger.LogDebug(LogVerb.Config, $"Squire_Male: {config.Squire_Male}");
-                        ModLogger.LogDebug(LogVerb.Config, $"Archer_Female: {config.Archer_Female}");
-                        ModLogger.LogDebug(LogVerb.Config, $"Knight_Female: {config.Knight_Female}");
+                        ModLogger.Debug(LogVerb.Config, $"After setting {jobProperty}, checking other properties:");
+                        ModLogger.Debug(LogVerb.Config, $"Squire_Male: {config.Squire_Male}");
+                        ModLogger.Debug(LogVerb.Config, $"Archer_Female: {config.Archer_Female}");
+                        ModLogger.Debug(LogVerb.Config, $"Knight_Female: {config.Knight_Female}");
 
                         // Log state AFTER setting property but BEFORE save
-                        ModLogger.LogDebug(LogVerb.Config, $"AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
+                        ModLogger.Debug(LogVerb.Config, $"AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
 
                         SaveConfig(config);
 
                         // Verify it was set (use cached config which was updated by SaveConfig)
                         var verifyValue = propertyInfo.GetValue(_cachedConfig);
-                        ModLogger.LogDebug(LogVerb.Config, $"AFTER SAVE - Squire_Male: {_cachedConfig.Squire_Male}, Archer_Female: {_cachedConfig.Archer_Female}, WhiteMage_Male: {_cachedConfig.WhiteMage_Male}");
-                        ModLogger.LogDebug(LogVerb.Config, $"Verification - {jobProperty} is now: {verifyValue}");
+                        ModLogger.Debug(LogVerb.Config, $"AFTER SAVE - Squire_Male: {_cachedConfig.Squire_Male}, Archer_Female: {_cachedConfig.Archer_Female}, WhiteMage_Male: {_cachedConfig.WhiteMage_Male}");
+                        ModLogger.Debug(LogVerb.Config, $"Verification - {jobProperty} is now: {verifyValue}");
                     }
                     else
                     {
-                        ModLogger.LogDebug(LogVerb.Config, $"Property type mismatch. Expected: {typeof(string)}, Got: {propertyInfo.PropertyType}");
+                        ModLogger.Debug(LogVerb.Config, $"Property type mismatch. Expected: {typeof(string)}, Got: {propertyInfo.PropertyType}");
                     }
                 }
                 else
                 {
-                    ModLogger.LogDebug(LogVerb.Config, $"Property not found: {jobProperty}");
-                    ModLogger.LogDebug(LogVerb.Config, $"Did you mean one of: {string.Join(", ", allProperties.Take(5))}...");
+                    ModLogger.Debug(LogVerb.Config, $"Property not found: {jobProperty}");
+                    ModLogger.Debug(LogVerb.Config, $"Did you mean one of: {string.Join(", ", allProperties.Take(5))}...");
                 }
             }
         }
@@ -232,7 +232,7 @@ namespace FFTColorCustomizer.Configuration
 
         public void ResetToDefaults()
         {
-            ModLogger.LogDebug(LogVerb.Config, $"ResetToDefaults called");
+            ModLogger.Debug(LogVerb.Config, $"ResetToDefaults called");
 
             // Create a new default config with all properties explicitly set to original
             var defaultConfig = new Config();
@@ -257,19 +257,19 @@ namespace FFTColorCustomizer.Configuration
                 if (prop != null && prop.PropertyType == typeof(string))
                 {
                     prop.SetValue(defaultConfig, "original");
-                    ModLogger.LogDebug(LogVerb.Config, $"Reset story character {characterName} to original");
+                    ModLogger.Debug(LogVerb.Config, $"Reset story character {characterName} to original");
                 }
             }
 
             // Log what we're about to save
-            ModLogger.LogDebug(LogVerb.Config, $"Default config - Knight_Male: {defaultConfig.Knight_Male}, Archer_Female: {defaultConfig.Archer_Female}");
-            ModLogger.LogDebug(LogVerb.Config, $"Story characters - Mustadio: {defaultConfig.Mustadio}, Rapha: {defaultConfig.Rapha}, Meliadoul: {defaultConfig.Meliadoul}");
+            ModLogger.Debug(LogVerb.Config, $"Default config - Knight_Male: {defaultConfig.Knight_Male}, Archer_Female: {defaultConfig.Archer_Female}");
+            ModLogger.Debug(LogVerb.Config, $"Story characters - Mustadio: {defaultConfig.Mustadio}, Rapha: {defaultConfig.Rapha}, Meliadoul: {defaultConfig.Meliadoul}");
 
             // Now save to disk using SaveConfig which properly updates the cache
             // SaveConfig has its own lock, so we don't need to lock here
             SaveConfig(defaultConfig);
 
-            ModLogger.LogDebug(LogVerb.Config, $"Reset to defaults completed");
+            ModLogger.Debug(LogVerb.Config, $"Reset to defaults completed");
         }
 
         public string GetJobPropertyForSprite(string spriteName)

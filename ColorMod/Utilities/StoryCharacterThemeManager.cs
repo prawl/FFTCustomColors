@@ -42,7 +42,7 @@ namespace FFTColorCustomizer.Utilities
 
                 if (!File.Exists(jsonPath))
                 {
-                    ModLogger.LogWarning(LogVerb.Theme, $"StoryCharacters.json not found at: {jsonPath}");
+                    ModLogger.Warn(LogVerb.Theme, $"StoryCharacters.json not found at: {jsonPath}");
                     return;
                 }
 
@@ -72,7 +72,7 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Theme, $"Failed to load StoryCharacters.json: {ex.Message}");
+                ModLogger.Error(LogVerb.Theme, $"Failed to load StoryCharacters.json: {ex.Message}");
             }
         }
 
@@ -129,7 +129,7 @@ namespace FFTColorCustomizer.Utilities
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Theme, $"Theme '{theme}' not available for character '{characterName}'");
+                ModLogger.Warn(LogVerb.Theme, $"Theme '{theme}' not available for character '{characterName}'");
             }
         }
 

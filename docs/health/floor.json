@@ -1,21 +1,27 @@
 {
- "sha": "d2e0062a",
+ "sha": "ba60cb44",
  "date": "2026-11-03",
  "dirty": true,
  "snapshot": {
-  "prod_files": 135,
-  "prod_lines": 23607,
-  "code_lines": 16724,
-  "test_files": 189,
-  "test_lines": 32797,
+  "prod_files": 130,
+  "prod_lines": 22972,
+  "code_lines": 16341,
+  "test_files": 186,
+  "test_lines": 32028,
   "test_ratio": 1.39,
-  "comment_share": 0.16,
-  "empty_catches": 16,
-  "catches": 111,
-  "methods": 885,
+  "comment_share": 0.158,
+  "empty_catches": 9,
+  "catches": 101,
+  "methods": 844,
   "long_methods": 23,
   "long_files": 15,
-  "duplication": 0.0313
+  "duplication": 0.0319
  },
- "since": "2026-11-03"
+ "since": "2026-11-03",
+ "allowed_worse": [
+  "code in repeated 8-line blocks: 0.0319, was 0.0313 in floor d2e0062a"
+ ],
+ "allowed": {
+  "duplication": "CC-50"
+ }
 }

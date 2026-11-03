@@ -176,9 +176,9 @@ namespace FFTColorCustomizer.Configuration
         public bool TryRunCustomConfiguration()
         {
             using var dpiScope = new DpiAwarenessScope();
-            ModLogger.LogDebug(LogVerb.Trace, $"DPI awareness scope applied: {dpiScope.AppliedContext}.");
+            ModLogger.Debug(LogVerb.Trace, $"DPI awareness scope applied: {dpiScope.AppliedContext}.");
 
-            ModLogger.LogDebug(LogVerb.Ui, "TryRunCustomConfiguration called!");
+            ModLogger.Debug(LogVerb.Ui, "TryRunCustomConfiguration called!");
 
             // Gate the editor on the game being live. Reloaded-II's "Configure Mod"
             // button can be clicked from the launcher even when FFT isn't running;
@@ -187,7 +187,7 @@ namespace FFTColorCustomizer.Configuration
             // them. F1 in-game and alt-tab-then-click both still work.
             if (!GameRunningDetector.IsGameRunning())
             {
-                ModLogger.Log(LogVerb.Ui, "Configure clicked but game isn't running; showing hint modal.");
+                ModLogger.Event(LogVerb.Ui, "Configure clicked but game isn't running; showing hint modal.");
                 System.Windows.Forms.MessageBox.Show(
                     "Start Final Fantasy Tactics first, then either:\n\n" +
                     "  • Press F1 in-game, or\n" +
@@ -202,45 +202,45 @@ namespace FFTColorCustomizer.Configuration
             // Use Windows Forms for better compatibility
             try
             {
-                ModLogger.LogDebug(LogVerb.Config, "Getting configuration...");
-                ModLogger.LogDebug(LogVerb.Config, $"ConfigFolder: {ConfigFolder}");
+                ModLogger.Debug(LogVerb.Config, "Getting configuration...");
+                ModLogger.Debug(LogVerb.Config, $"ConfigFolder: {ConfigFolder}");
 
                 // Load directly from the config file, not through the old system
                 var configPath = Path.Combine(ConfigFolder!, "Config.json");
-                ModLogger.LogDebug(LogVerb.Config, $"Loading config directly from: {configPath}");
+                ModLogger.Debug(LogVerb.Config, $"Loading config directly from: {configPath}");
 
                 var configManager = new ConfigurationManager(configPath);
                 var config = configManager.LoadConfig();
-                ModLogger.LogDebug(LogVerb.Config, $"Config loaded - Squire_Male: {config.Squire_Male}");
+                ModLogger.Debug(LogVerb.Config, $"Config loaded - Squire_Male: {config.Squire_Male}");
 
-                ModLogger.LogDebug(LogVerb.Ui, "Creating configuration form...");
+                ModLogger.Debug(LogVerb.Ui, "Creating configuration form...");
                 var formConfigPath = Path.Combine(ConfigFolder!, "Config.json");
-                ModLogger.LogDebug(LogVerb.Config, $"Will save to: {formConfigPath}");
-                ModLogger.LogDebug(LogVerb.Config, $"Mod folder (for resources): {ModFolder}");
+                ModLogger.Debug(LogVerb.Config, $"Will save to: {formConfigPath}");
+                ModLogger.Debug(LogVerb.Config, $"Mod folder (for resources): {ModFolder}");
                 var configForm = new ConfigurationForm(config, formConfigPath, ModFolder);
 
-                ModLogger.LogDebug(LogVerb.Ui, "Showing configuration form...");
+                ModLogger.Debug(LogVerb.Ui, "Showing configuration form...");
                 var result = configForm.ShowDialog();
 
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, "User clicked Save - DialogResult.OK received");
-                    ModLogger.LogDebug(LogVerb.Config, $"Config state before save - Squire_Male: {config.Squire_Male}");
+                    ModLogger.Debug(LogVerb.Ui, "User clicked Save - DialogResult.OK received");
+                    ModLogger.Debug(LogVerb.Config, $"Config state before save - Squire_Male: {config.Squire_Male}");
 
                     // Always save directly to ensure consistency
                     var saveConfigPath = Path.Combine(ConfigFolder!, "Config.json");
-                    ModLogger.LogDebug(LogVerb.Config, $"Saving directly to: {saveConfigPath}");
+                    ModLogger.Debug(LogVerb.Config, $"Saving directly to: {saveConfigPath}");
                     var saveConfigManager = new ConfigurationManager(saveConfigPath);
                     saveConfigManager.SaveConfig(config);
 
                     // Don't call IConfigurable.Save here, it might trigger unwanted behavior
                     // The ConfigurationManager.SaveConfig already saved the file
-                    ModLogger.Log(LogVerb.Config, "Configuration saved");
+                    ModLogger.Event(LogVerb.Config, "Configuration saved");
 
                     // Apply sprite changes for generic characters
                     try
                     {
-                        ModLogger.LogDebug(LogVerb.Theme, "Applying sprite changes for generic characters...");
+                        ModLogger.Debug(LogVerb.Theme, "Applying sprite changes for generic characters...");
 
                         // The mod install dir is wherever OUR DLL is actually running from;
                         // never guess a folder name from the User config path. The old hard coded
@@ -249,7 +249,7 @@ namespace FFTColorCustomizer.Configuration
                         string assemblyDir = Path.GetDirectoryName(
                             System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty;
                         string actualModPath = ModInstallPathResolver.Resolve(assemblyDir, ModFolder);
-                        ModLogger.LogDebug(LogVerb.Theme, $"Using actual mod path for sprites: {actualModPath}");
+                        ModLogger.Debug(LogVerb.Theme, $"Using actual mod path for sprites: {actualModPath}");
 
                         // Initialize sprite manager and apply configuration
                         var spriteManager = new Utilities.ConfigBasedSpriteManager(
@@ -258,29 +258,29 @@ namespace FFTColorCustomizer.Configuration
                             actualModPath);
 
                         spriteManager.UpdateConfiguration(config);
-                        ModLogger.Log(LogVerb.Theme, "Sprite changes applied successfully");
+                        ModLogger.Event(LogVerb.Theme, "Sprite changes applied successfully");
                     }
                     catch (Exception spriteEx)
                     {
-                        ModLogger.LogError(LogVerb.Theme, $"Applying sprites failed: {spriteEx.Message}");
+                        ModLogger.Error(LogVerb.Theme, $"Applying sprites failed: {spriteEx.Message}");
                     }
 
                     // Notify Mod instance if it exists to update sprite manager
                     // This ensures the mod is aware of configuration changes made from Reloaded-II menu
-                    ModLogger.LogDebug(LogVerb.Config, "Configuration save process completed");
+                    ModLogger.Debug(LogVerb.Config, "Configuration save process completed");
                 }
                 else
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"User cancelled - DialogResult: {result}");
+                    ModLogger.Debug(LogVerb.Ui, $"User cancelled - DialogResult: {result}");
                 }
 
-                ModLogger.LogDebug(LogVerb.Ui, "Configuration window closed");
+                ModLogger.Debug(LogVerb.Ui, "Configuration window closed");
                 return true;
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Ui, $"Showing the configuration window failed: {ex}");
-                ModLogger.LogDebug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
+                ModLogger.Error(LogVerb.Ui, $"Showing the configuration window failed: {ex}");
+                ModLogger.Debug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

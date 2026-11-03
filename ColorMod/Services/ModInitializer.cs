@@ -40,7 +40,7 @@ namespace FFTColorCustomizer.Services
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Startup, $"Initialization failed: {ex.Message}");
+                ModLogger.Error(LogVerb.Startup, $"Initialization failed: {ex.Message}");
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }
@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.Services
         private Process InitializeGameProcess()
         {
             var process = Process.GetCurrentProcess();
-            ModLogger.LogDebug(LogVerb.Trace, $"Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
+            ModLogger.Debug(LogVerb.Trace, $"Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
             return process;
         }
 
@@ -69,11 +69,11 @@ namespace FFTColorCustomizer.Services
         private string DetermineConfigPath()
         {
             var envConfigPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH");
-            ModLogger.LogDebug(LogVerb.Config, $"FFT_CONFIG_PATH env var: '{envConfigPath}'");
+            ModLogger.Debug(LogVerb.Config, $"FFT_CONFIG_PATH env var: '{envConfigPath}'");
 
             if (!string.IsNullOrEmpty(envConfigPath))
             {
-                ModLogger.LogDebug(LogVerb.Config, $"Using config path from env var: {envConfigPath}");
+                ModLogger.Debug(LogVerb.Config, $"Using config path from env var: {envConfigPath}");
                 return envConfigPath;
             }
 
@@ -90,7 +90,7 @@ namespace FFTColorCustomizer.Services
                     // Fallback if User config doesn't exist
                     if (!File.Exists(configPath))
                     {
-                        ModLogger.LogDebug(LogVerb.Config, $"User config not found at: {configPath}");
+                        ModLogger.Debug(LogVerb.Config, $"User config not found at: {configPath}");
                         configPath = Path.Combine(_modPath, ColorModConstants.ConfigFileName);
                     }
 
@@ -103,15 +103,15 @@ namespace FFTColorCustomizer.Services
 
         private ConfigurationManager? InitializeConfigurationManager(string configPath)
         {
-            ModLogger.LogDebug(LogVerb.Config, $"Final config path: '{configPath}'");
+            ModLogger.Debug(LogVerb.Config, $"Final config path: '{configPath}'");
 
             if (!string.IsNullOrEmpty(configPath))
             {
-                ModLogger.LogDebug(LogVerb.Config, $"Creating ConfigurationManager with path: {configPath}");
+                ModLogger.Debug(LogVerb.Config, $"Creating ConfigurationManager with path: {configPath}");
                 return new ConfigurationManager(configPath);
             }
 
-            ModLogger.LogWarning(LogVerb.Startup, "Config path is null or empty");
+            ModLogger.Warn(LogVerb.Startup, "Config path is null or empty");
             return null;
         }
 
@@ -119,7 +119,7 @@ namespace FFTColorCustomizer.Services
         {
             if (configManager != null)
             {
-                ModLogger.LogDebug(LogVerb.Sprite, "Creating ConfigBasedSpriteManager...");
+                ModLogger.Debug(LogVerb.Sprite, "Creating ConfigBasedSpriteManager...");
                 return new ConfigBasedSpriteManager(_modPath, configManager, _sourcePath);
             }
 
@@ -136,12 +136,12 @@ namespace FFTColorCustomizer.Services
             if (result.ConfigurationManager == null) return;
 
             var loadedConfig = result.ConfigurationManager.LoadConfig();
-            ModLogger.LogDebug(LogVerb.Config, $"Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
+            ModLogger.Debug(LogVerb.Config, $"Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
 
             LogConfiguredJobColors(loadedConfig);
 
             // Prepare sprites based on configuration
-            ModLogger.LogDebug(LogVerb.Sprite, "Preparing sprites based on configuration...");
+            ModLogger.Debug(LogVerb.Sprite, "Preparing sprites based on configuration...");
             result.DynamicSpriteLoader?.PrepareSpritesForConfig();
             result.ConfigBasedSpriteManager?.ApplyConfiguration();
         }

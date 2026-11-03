@@ -47,24 +47,24 @@ namespace FFTColorCustomizer.Utilities
 
         public void SwitchColorScheme(string colorScheme)
         {
-            ModLogger.LogDebug(LogVerb.Sprite, $"Switching to {colorScheme} color scheme");
+            ModLogger.Debug(LogVerb.Sprite, $"Switching to {colorScheme} color scheme");
 
             // Read from source (git repo), write to deployment
             string sourceDir = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", $"sprites_{colorScheme}");
             string targetDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-            ModLogger.LogDebug(LogVerb.Sprite, $"Looking for modified sprites in: {sourceDir}");
+            ModLogger.Debug(LogVerb.Sprite, $"Looking for modified sprites in: {sourceDir}");
 
             if (!Directory.Exists(sourceDir))
             {
                 // If it's the original scheme and the directory doesn't exist, that's OK, we just don't swap anything
                 if (colorScheme == "original")
                 {
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Original scheme selected - no sprite swapping needed");
+                    ModLogger.Debug(LogVerb.Sprite, $"Original scheme selected - no sprite swapping needed");
                     return;
                 }
 
-                ModLogger.LogWarning(LogVerb.Sprite, $"Variant directory does not exist: {sourceDir}");
+                ModLogger.Warn(LogVerb.Sprite, $"Variant directory does not exist: {sourceDir}");
                 return;
             }
 
@@ -75,11 +75,11 @@ namespace FFTColorCustomizer.Utilities
 
                 if (spriteFiles.Count == 0)
                 {
-                    ModLogger.LogDebug(LogVerb.Sprite, $"No modified sprites found for {colorScheme}");
+                    ModLogger.Debug(LogVerb.Sprite, $"No modified sprites found for {colorScheme}");
                     return;
                 }
 
-                ModLogger.LogDebug(LogVerb.Sprite, $"Found {spriteFiles.Count} modified sprite(s) for {colorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Found {spriteFiles.Count} modified sprite(s) for {colorScheme}");
 
                 foreach (var sourceFile in spriteFiles)
                 {
@@ -89,27 +89,27 @@ namespace FFTColorCustomizer.Utilities
                     // Log if this is a story character sprite
                     if (fileName.Contains("musu") || fileName.Contains("aguri") || fileName.Contains("oran"))
                     {
-                        ModLogger.LogDebug(LogVerb.Sprite, $"STORY CHARACTER: Applying {colorScheme} variant for {fileName}");
-                        ModLogger.LogDebug(LogVerb.Sprite, $"Source: {sourceFile}");
-                        ModLogger.LogDebug(LogVerb.Sprite, $"Target: {targetFile}");
+                        ModLogger.Debug(LogVerb.Sprite, $"STORY CHARACTER: Applying {colorScheme} variant for {fileName}");
+                        ModLogger.Debug(LogVerb.Sprite, $"Source: {sourceFile}");
+                        ModLogger.Debug(LogVerb.Sprite, $"Target: {targetFile}");
 
                         // Verify the file exists before copying
                         if (!File.Exists(sourceFile))
                         {
-                            ModLogger.LogError(LogVerb.Sprite, $"Source file does not exist: {sourceFile}");
+                            ModLogger.Error(LogVerb.Sprite, $"Source file does not exist: {sourceFile}");
                             continue;
                         }
                     }
 
                     File.Copy(sourceFile, targetFile, true);
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Applied {colorScheme} variant: {fileName}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Applied {colorScheme} variant: {fileName}");
                 }
 
-                ModLogger.Log(LogVerb.Sprite, $"Successfully applied {colorScheme} color scheme");
+                ModLogger.Event(LogVerb.Sprite, $"Successfully applied {colorScheme} color scheme");
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Sprite, $"Switching sprites failed: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Switching sprites failed: {ex.Message}");
             }
         }
 
@@ -148,13 +148,13 @@ namespace FFTColorCustomizer.Utilities
                 // Extra logging for story characters
                 if (fileName.Contains("musu") || fileName.Contains("aguri"))
                 {
-                    ModLogger.LogDebug(LogVerb.Sprite, $"STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
-                    ModLogger.LogDebug(LogVerb.Sprite, $"From: {originalPath}");
-                    ModLogger.LogDebug(LogVerb.Sprite, $"To: {redirectedPath}");
+                    ModLogger.Debug(LogVerb.Sprite, $"STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
+                    ModLogger.Debug(LogVerb.Sprite, $"From: {originalPath}");
+                    ModLogger.Debug(LogVerb.Sprite, $"To: {redirectedPath}");
                 }
                 else
                 {
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Redirecting {fileName} to {currentScheme} variant");
+                    ModLogger.Debug(LogVerb.Sprite, $"Redirecting {fileName} to {currentScheme} variant");
                 }
                 return redirectedPath;
             }

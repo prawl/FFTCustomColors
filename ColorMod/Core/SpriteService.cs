@@ -13,10 +13,9 @@ namespace FFTColorCustomizer.Core
     {
         private readonly IPathResolver _pathResolver;
 
-        public SpriteService(IPathResolver pathResolver, ILogger logger)
+        public SpriteService(IPathResolver pathResolver)
         {
             _pathResolver = pathResolver ?? throw new ArgumentNullException(nameof(pathResolver));
-            ArgumentNullException.ThrowIfNull(logger);
         }
 
         /// <inheritdoc />
@@ -33,7 +32,7 @@ namespace FFTColorCustomizer.Core
                 var spriteFileName = GetSpriteNameForCharacter(character);
                 if (string.IsNullOrEmpty(spriteFileName))
                 {
-                    Utilities.ModLogger.LogWarning(LogVerb.Sprite, $"Could not determine sprite file name for {character}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Could not determine sprite file name for {character}");
                     return;
                 }
 
@@ -51,17 +50,17 @@ namespace FFTColorCustomizer.Core
                         }
 
                         File.Copy(spritePath, destinationPath, true);
-                        Utilities.ModLogger.LogDebug(LogVerb.Sprite, $"Copied sprite for {character} with theme {theme}");
+                        ModLogger.Debug(LogVerb.Sprite, $"Copied sprite for {character} with theme {theme}");
                     }
                 }
                 else
                 {
-                    Utilities.ModLogger.LogWarning(LogVerb.Sprite, $"Sprite file not found for {character} with theme {theme}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Sprite file not found for {character} with theme {theme}");
                 }
             }
             catch (Exception ex)
             {
-                Utilities.ModLogger.LogError(LogVerb.Sprite, $"Failed to copy sprites for {character}: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Failed to copy sprites for {character}: {ex.Message}");
             }
         }
 
@@ -82,15 +81,15 @@ namespace FFTColorCustomizer.Core
                         }
                         catch (Exception ex)
                         {
-                            Utilities.ModLogger.LogWarning(LogVerb.Sprite, $"Failed to delete sprite file {file}: {ex.Message}");
+                            ModLogger.Warn(LogVerb.Sprite, $"Failed to delete sprite file {file}: {ex.Message}");
                         }
                     }
-                    Utilities.ModLogger.LogDebug(LogVerb.Sprite, "Cleared all sprite files");
+                    ModLogger.Debug(LogVerb.Sprite, "Cleared all sprite files");
                 }
             }
             catch (Exception ex)
             {
-                Utilities.ModLogger.LogError(LogVerb.Sprite, $"Failed to clear sprites: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Failed to clear sprites: {ex.Message}");
             }
         }
 
@@ -116,11 +115,11 @@ namespace FFTColorCustomizer.Core
                         }
                     }
                 }
-                Utilities.ModLogger.LogDebug(LogVerb.Sprite, "Applied sprite configuration");
+                ModLogger.Debug(LogVerb.Sprite, "Applied sprite configuration");
             }
             catch (Exception ex)
             {
-                Utilities.ModLogger.LogError(LogVerb.Sprite, $"Failed to apply sprite configuration: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Failed to apply sprite configuration: {ex.Message}");
             }
         }
 
@@ -134,12 +133,12 @@ namespace FFTColorCustomizer.Core
             {
                 if (!Directory.Exists(path))
                 {
-                    Utilities.ModLogger.LogWarning(LogVerb.Sprite, $"Dynamic sprite path does not exist: {path}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Dynamic sprite path does not exist: {path}");
                     return;
                 }
 
                 var spriteFiles = Directory.GetFiles(path, "*.bin", SearchOption.AllDirectories);
-                Utilities.ModLogger.LogDebug(LogVerb.Sprite, $"Found {spriteFiles.Length} dynamic sprite files to load");
+                ModLogger.Debug(LogVerb.Sprite, $"Found {spriteFiles.Length} dynamic sprite files to load");
 
                 foreach (var file in spriteFiles)
                 {
@@ -158,13 +157,13 @@ namespace FFTColorCustomizer.Core
                     }
                     catch (Exception ex)
                     {
-                        Utilities.ModLogger.LogWarning(LogVerb.Sprite, $"Failed to load dynamic sprite {file}: {ex.Message}");
+                        ModLogger.Warn(LogVerb.Sprite, $"Failed to load dynamic sprite {file}: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Utilities.ModLogger.LogError(LogVerb.Sprite, $"Failed to load dynamic sprites: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Failed to load dynamic sprites: {ex.Message}");
             }
         }
 

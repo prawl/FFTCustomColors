@@ -13,7 +13,7 @@ namespace FFTColorCustomizer.Configuration.UI
         public PreviewImageManager(string modPath)
         {
             _modPath = modPath;
-            ModLogger.LogDebug(LogVerb.Ui, $"PreviewImageManager initialized with modPath: {modPath}");
+            ModLogger.Debug(LogVerb.Ui, $"PreviewImageManager initialized with modPath: {modPath}");
             // We no longer use PNG preview files, this class is kept for compatibility
         }
 

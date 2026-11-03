@@ -62,13 +62,13 @@ namespace FFTColorCustomizer.Core.ModComponents
             var schemes = _colorCycler.GetAvailableSchemes();
             if (schemes.Count > 0)
             {
-                ModLogger.LogDebug(LogVerb.Theme, $"Found {schemes.Count} color schemes");
+                ModLogger.Debug(LogVerb.Theme, $"Found {schemes.Count} color schemes");
                 _currentColorScheme = DefaultTheme;
                 _colorCycler.SetCurrentScheme(_currentColorScheme);
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Theme, $"No color schemes found in {spritesPath}");
+                ModLogger.Warn(LogVerb.Theme, $"No color schemes found in {spritesPath}");
                 _currentColorScheme = DefaultTheme;
             }
 
@@ -94,7 +94,7 @@ namespace FFTColorCustomizer.Core.ModComponents
         {
             _currentColorScheme = scheme;
             _colorCycler?.SetCurrentScheme(scheme);
-            ModLogger.Log(LogVerb.Theme, $"Color scheme set to: {scheme}");
+            ModLogger.Event(LogVerb.Theme, $"Color scheme set to: {scheme}");
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             if (_colorCycler != null)
             {
                 _currentColorScheme = _colorCycler.GetNextScheme();
-                ModLogger.Log(LogVerb.Theme, $"Color scheme cycled to: {_currentColorScheme}");
+                ModLogger.Event(LogVerb.Theme, $"Color scheme cycled to: {_currentColorScheme}");
             }
         }
 
@@ -159,7 +159,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             // Return themed path if it exists, otherwise original
             if (File.Exists(themedPath))
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Intercepted: {fileName} -> {_currentColorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Intercepted: {fileName} -> {_currentColorScheme}");
                 return themedPath;
             }
 
@@ -174,7 +174,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             if (_themeManager != null)
             {
                 _themeManager.ApplyInitialThemes();
-                ModLogger.LogDebug(LogVerb.Theme, "Themes initialized");
+                ModLogger.Debug(LogVerb.Theme, "Themes initialized");
             }
         }
 
@@ -219,7 +219,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             if (storyManager != null)
             {
                 storyManager.SetCurrentTheme(characterName, themeName);
-                ModLogger.LogDebug(LogVerb.Theme, $"Applied {themeName} theme to {characterName}");
+                ModLogger.Debug(LogVerb.Theme, $"Applied {themeName} theme to {characterName}");
             }
         }
 
@@ -232,7 +232,7 @@ namespace FFTColorCustomizer.Core.ModComponents
             if (storyManager != null)
             {
                 var newTheme = storyManager.CycleTheme(characterName);
-                ModLogger.Log(LogVerb.Theme, $"{characterName} theme cycled to: {newTheme}");
+                ModLogger.Event(LogVerb.Theme, $"{characterName} theme cycled to: {newTheme}");
                 return newTheme;
             }
             return DefaultTheme;

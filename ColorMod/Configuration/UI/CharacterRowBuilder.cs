@@ -78,14 +78,14 @@ namespace FFTColorCustomizer.Configuration.UI
                         var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
                         if (Directory.Exists(versionedPath))
                         {
-                            ModLogger.LogDebug(LogVerb.Ui, $"Found FFTIVC for previews in versioned directory: {versionedPath}");
+                            ModLogger.Debug(LogVerb.Ui, $"Found FFTIVC for previews in versioned directory: {versionedPath}");
                             return versionedPath;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogWarning(LogVerb.Ui, $"Error searching for versioned directories: {ex.Message}");
+                    ModLogger.Warn(LogVerb.Ui, $"Error searching for versioned directories: {ex.Message}");
                 }
             }
 
@@ -99,7 +99,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Use provided controls list or default to generic character controls
             var targetControlsList = controlsList ?? _genericCharacterControls;
 
-            ModLogger.LogDebug(LogVerb.Ui, $"AddJobRow: {jobName} = {currentTheme}");
+            ModLogger.Debug(LogVerb.Ui, $"AddJobRow: {jobName} = {currentTheme}");
 
             // Create label
             var label = ConfigUIComponentFactory.CreateCharacterLabel(jobName);
@@ -131,7 +131,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 var tag = c.Tag as dynamic;
                 if (tag != null)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loading images for {tag.JobName}");
+                    ModLogger.Debug(LogVerb.Ui, $"Loading images for {tag.JobName}");
                     UpdateGenericPreviewImages(c as PreviewCarousel, tag.JobName.ToString(), tag.Theme.ToString());
                 }
             };
@@ -158,7 +158,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Check if form is fully loaded using the provided function
                 if (isFullyLoaded != null && isFullyLoaded() && !string.IsNullOrEmpty(newTheme))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Selection changed: {jobName} = {newTheme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
 
                     // Update tag for lazy loading
@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (_isInitializing != null && _isInitializing()) return;
                 if (isFullyLoaded != null && isFullyLoaded() && !string.IsNullOrEmpty(newTheme))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Selection changed: {displayName} = {newTheme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Selection changed: {displayName} = {newTheme}");
                     setter(newTheme);
 
                     carousel.Tag = new { Family = family, TierKey = tierKey, Theme = newTheme };
@@ -355,8 +355,8 @@ namespace FFTColorCustomizer.Configuration.UI
             // Get user themes for this story character
             var userThemes = _userThemeService.GetUserThemes(characterConfig.Name);
 
-            ModLogger.LogDebug(LogVerb.Ui, $"Story character {characterConfig.Name} has {availableThemes.Count} built-in themes: {string.Join(", ", availableThemes)}");
-            ModLogger.LogDebug(LogVerb.Ui, $"Story character {characterConfig.Name} has {userThemes.Count} user themes: {string.Join(", ", userThemes)}");
+            ModLogger.Debug(LogVerb.Ui, $"Story character {characterConfig.Name} has {availableThemes.Count} built-in themes: {string.Join(", ", availableThemes)}");
+            ModLogger.Debug(LogVerb.Ui, $"Story character {characterConfig.Name} has {userThemes.Count} user themes: {string.Join(", ", userThemes)}");
             comboBox.SetThemesWithUserThemes(availableThemes, userThemes);
 
             // Set Tag with JobName for RefreshDropdownsForJob to find this comboBox
@@ -374,7 +374,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 // For now, we'll check if the control's handle is created
                 if (comboBox.IsHandleCreated && !string.IsNullOrEmpty(newTheme))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Story character {characterConfig.Name} changing to theme: {newTheme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Story character {characterConfig.Name} changing to theme: {newTheme}");
                     characterConfig.SetValue(newTheme);
 
                     // Update tag for lazy loading
@@ -412,7 +412,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 var tag = c.Tag as dynamic;
                 if (tag != null)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loading story character images for {tag.CharacterName}");
+                    ModLogger.Debug(LogVerb.Ui, $"Loading story character images for {tag.CharacterName}");
                     UpdateStoryCharacterPreview(c as PreviewCarousel, tag.CharacterName.ToString(), tag.Theme.ToString());
                 }
             };
@@ -437,7 +437,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Get shared themes from the JobClassDefinitionService
             // This could later be loaded from a JSON file for easier configuration
             var themes = _jobClassService.GetAvailableThemes();
-            ModLogger.LogDebug(LogVerb.Ui, $"GetAvailableGenericThemes returned {themes.Count} themes: {string.Join(", ", themes)}");
+            ModLogger.Debug(LogVerb.Ui, $"GetAvailableGenericThemes returned {themes.Count} themes: {string.Join(", ", themes)}");
             return themes;
         }
 
@@ -450,7 +450,7 @@ namespace FFTColorCustomizer.Configuration.UI
                                      .Replace(" ", "");
 
             var themes = _jobClassService.GetAvailableThemesForJob(internalName);
-            ModLogger.LogDebug(LogVerb.Ui, $"GetAvailableGenericThemesForJob({jobName}) returned {themes.Count} themes: {string.Join(", ", themes)}");
+            ModLogger.Debug(LogVerb.Ui, $"GetAvailableGenericThemesForJob({jobName}) returned {themes.Count} themes: {string.Join(", ", themes)}");
             return themes;
         }
 
@@ -472,7 +472,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Ui, $"Failed to load preview for theme '{capturedTheme}': {ex.Message}");
+                    ModLogger.Error(LogVerb.Ui, $"Failed to load preview for theme '{capturedTheme}': {ex.Message}");
                     return;
                 }
 
@@ -503,14 +503,14 @@ namespace FFTColorCustomizer.Configuration.UI
                         }
                         catch (Exception ex)
                         {
-                            ModLogger.LogError(LogVerb.Ui, $"Failed to apply preview for theme '{capturedTheme}': {ex.Message}");
+                            ModLogger.Error(LogVerb.Ui, $"Failed to apply preview for theme '{capturedTheme}': {ex.Message}");
                             DisposeImages(images);
                         }
                     }));
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Ui, $"Failed to marshal preview for theme '{capturedTheme}': {ex.Message}");
+                    ModLogger.Error(LogVerb.Ui, $"Failed to marshal preview for theme '{capturedTheme}': {ex.Message}");
                     DisposeImages(images);
                 }
             });
@@ -552,7 +552,7 @@ namespace FFTColorCustomizer.Configuration.UI
             var bmpImages = TryLoadGenericFromBmp(jobName, theme);
             if (bmpImages != null && bmpImages.Length > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {bmpImages.Length} HD sprites for {jobName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {bmpImages.Length} HD sprites for {jobName} - {theme}");
                 return bmpImages;
             }
 
@@ -560,7 +560,7 @@ namespace FFTColorCustomizer.Configuration.UI
             var binImages = TryLoadGenericFromBinFile(jobName, theme);
             if (binImages != null && binImages.Length > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {binImages.Length} sprites from .bin file for {jobName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {binImages.Length} sprites from .bin file for {jobName} - {theme}");
                 return binImages;
             }
 
@@ -591,11 +591,11 @@ namespace FFTColorCustomizer.Configuration.UI
                         {
                             var image = Image.FromStream(stream);
                             images.Add(image);
-                            ModLogger.LogDebug(LogVerb.Ui, $"Loaded direction sprite: {direction} for {fileName}_{theme}");
+                            ModLogger.Debug(LogVerb.Ui, $"Loaded direction sprite: {direction} for {fileName}_{theme}");
                         }
                         catch (Exception ex)
                         {
-                            ModLogger.LogDebug(LogVerb.Ui, $"Failed to load direction {direction}: {ex.Message}");
+                            ModLogger.Debug(LogVerb.Ui, $"Failed to load direction {direction}: {ex.Message}");
                         }
                     }
                 }
@@ -604,7 +604,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // If we loaded any directional sprites, use them
             if (images.Count > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {images.Count} directional views for {jobName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {images.Count} directional views for {jobName} - {theme}");
                 return images.ToArray();
             }
 
@@ -612,7 +612,7 @@ namespace FFTColorCustomizer.Configuration.UI
             foreach (var direction in new[] { "" })
             {
                 string resourceName = $"FFTColorCustomizer.Resources.Previews.{fileName}_{theme.ToLower()}{direction}.png";
-                ModLogger.LogDebug(LogVerb.Ui, $"Looking for directional resource: {resourceName}");
+                ModLogger.Debug(LogVerb.Ui, $"Looking for directional resource: {resourceName}");
 
                 // Also log the actual resource name we're looking for
                 System.Diagnostics.Debug.WriteLine($"[CAROUSEL] Trying to load: {resourceName}");
@@ -625,7 +625,7 @@ namespace FFTColorCustomizer.Configuration.UI
                         {
                             var image = Image.FromStream(stream);
                             images.Add(image);
-                            ModLogger.LogDebug(LogVerb.Ui, $"Loaded directional view: {direction}");
+                            ModLogger.Debug(LogVerb.Ui, $"Loaded directional view: {direction}");
                             System.Diagnostics.Debug.WriteLine($"[CAROUSEL] SUCCESS: Loaded {resourceName}");
                         }
                         else
@@ -645,7 +645,7 @@ namespace FFTColorCustomizer.Configuration.UI
                                         if (altStream != null)
                                         {
                                             images.Add(Image.FromStream(altStream));
-                                            ModLogger.LogDebug(LogVerb.Ui, $"Loaded main view with alt resource name");
+                                            ModLogger.Debug(LogVerb.Ui, $"Loaded main view with alt resource name");
                                             System.Diagnostics.Debug.WriteLine($"[CAROUSEL] SUCCESS via alt: {matchingResource}");
                                         }
                                     }
@@ -656,18 +656,18 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Could not load direction {direction}: {ex.Message}");
+                    ModLogger.Debug(LogVerb.Ui, $"Could not load direction {direction}: {ex.Message}");
                 }
             }
 
             // Return whatever directional views we managed to load (possibly none)
             if (images.Count > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {images.Count} directional views for {jobName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {images.Count} directional views for {jobName} - {theme}");
                 return images.ToArray();
             }
 
-            ModLogger.LogDebug(LogVerb.Ui, $"No preview images found for {jobName} - {theme}");
+            ModLogger.Debug(LogVerb.Ui, $"No preview images found for {jobName} - {theme}");
             return new Image[0];
         }
 
@@ -689,7 +689,7 @@ namespace FFTColorCustomizer.Configuration.UI
         /// </summary>
         private Image[] LoadStoryCharacterPreview(string characterName, string theme)
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Called with characterName='{characterName}', theme='{theme}'");
+            ModLogger.Debug(LogVerb.Ui, $"Called with characterName='{characterName}', theme='{theme}'");
 
             // If we don't have a valid mod path, don't load embedded resources
             // This ensures tests can verify that without a proper mod installation, no images load
@@ -712,7 +712,7 @@ namespace FFTColorCustomizer.Configuration.UI
                     var userThemeImages = TryLoadRamzaUserThemePreview(modPath, characterName, theme);
                     if (userThemeImages != null && userThemeImages.Length > 0)
                     {
-                        ModLogger.LogDebug(LogVerb.Ui, $"Loaded {userThemeImages.Length} sprites from user theme for {characterName} - {theme}");
+                        ModLogger.Debug(LogVerb.Ui, $"Loaded {userThemeImages.Length} sprites from user theme for {characterName} - {theme}");
                         return userThemeImages;
                     }
                 }
@@ -725,13 +725,13 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     // Convert Bitmap list to Image array for carousel
                     var spriteImageArray = spriteImages.Cast<Image>().ToArray();
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
                     return spriteImageArray;
                 }
                 else
                 {
                     // For Ramza, if no sprite sheet found for this theme, show empty preview
-                    ModLogger.LogDebug(LogVerb.Ui, $"No sprite sheet found for {characterName} - {theme}, showing empty preview");
+                    ModLogger.Debug(LogVerb.Ui, $"No sprite sheet found for {characterName} - {theme}, showing empty preview");
                     return new Image[0];
                 }
             }
@@ -748,7 +748,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 var userThemeImages = TryLoadStoryCharacterUserThemeFromBinFile(modPath, unitPath, spriteFileName, characterName, theme);
                 if (userThemeImages != null && userThemeImages.Length > 0)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loaded user theme preview for {characterName} - {theme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Loaded user theme preview for {characterName} - {theme}");
                     return userThemeImages;
                 }
             }
@@ -762,7 +762,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (hdImages != null && hdImages.Count > 0)
                 {
                     var hdArray = hdImages.Cast<Image>().ToArray();
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loaded {hdArray.Length} HD sprites for {characterName} - {theme}");
+                    ModLogger.Debug(LogVerb.Ui, $"Loaded {hdArray.Length} HD sprites for {characterName} - {theme}");
                     return hdArray;
                 }
             }
@@ -772,12 +772,12 @@ namespace FFTColorCustomizer.Configuration.UI
             var binImages = TryLoadFromBinFileWithTheme(characterName, theme);
             if (binImages != null && binImages.Length > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {binImages.Length} sprites from .bin file for {characterName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {binImages.Length} sprites from .bin file for {characterName} - {theme}");
                 return binImages;
             }
             else
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"No .bin file found or failed to load for {characterName} - {theme}, falling back to embedded resources");
+                ModLogger.Debug(LogVerb.Ui, $"No .bin file found or failed to load for {characterName} - {theme}, falling back to embedded resources");
             }
 
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
@@ -800,11 +800,11 @@ namespace FFTColorCustomizer.Configuration.UI
                         {
                             var image = Image.FromStream(stream);
                             images.Add(image);
-                            ModLogger.LogDebug(LogVerb.Ui, $"Loaded direction sprite: {direction} for {characterName}_{theme}");
+                            ModLogger.Debug(LogVerb.Ui, $"Loaded direction sprite: {direction} for {characterName}_{theme}");
                         }
                         catch (Exception ex)
                         {
-                            ModLogger.LogDebug(LogVerb.Ui, $"Failed to load direction {direction}: {ex.Message}");
+                            ModLogger.Debug(LogVerb.Ui, $"Failed to load direction {direction}: {ex.Message}");
                         }
                     }
                 }
@@ -813,7 +813,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // If we loaded any directional sprites, use them
             if (images.Count > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded {images.Count} directional views for story character {characterName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded {images.Count} directional views for story character {characterName} - {theme}");
                 return images.ToArray();
             }
 
@@ -825,12 +825,12 @@ namespace FFTColorCustomizer.Configuration.UI
                     _previewManager.UpdateStoryCharacterPreview(tempPictureBox, characterName, theme);
                     if (tempPictureBox.Image != null)
                     {
-                        ModLogger.LogDebug(LogVerb.Ui, $"Loaded single view for story character {characterName} - {theme}");
+                        ModLogger.Debug(LogVerb.Ui, $"Loaded single view for story character {characterName} - {theme}");
                         // PictureBox.Dispose() does not dispose its Image, so this ref stays valid.
                         return new Image[] { tempPictureBox.Image };
                     }
 
-                    ModLogger.LogDebug(LogVerb.Ui, $"No preview images found for story character {characterName} - {theme}");
+                    ModLogger.Debug(LogVerb.Ui, $"No preview images found for story character {characterName} - {theme}");
                 }
             }
 
@@ -892,7 +892,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 string internalName = GetInternalSpriteName(characterName);
                 string spriteFileName = $"battle_{internalName}_spr.bin";
 
-                ModLogger.LogDebug(LogVerb.Trace, $"Character name mapping: '{characterName}' -> '{internalName}' -> '{spriteFileName}'");
+                ModLogger.Debug(LogVerb.Trace, $"Character name mapping: '{characterName}' -> '{internalName}' -> '{spriteFileName}'");
 
                 // Find the actual FFTIVC path (handles versioned directories)
                 string unitPath = FindActualUnitPath(modPath);
@@ -915,34 +915,34 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 string characterThemeFolder = $"sprites_{characterName.ToLower()}_{themeFolderName}";
                 binPath = Path.Combine(unitPath, characterThemeFolder, spriteFileName);
-                ModLogger.LogDebug(LogVerb.Trace, $"Character: '{characterName}', Theme: '{theme}', Folder: '{characterThemeFolder}', File: '{spriteFileName}'");
-                ModLogger.LogDebug(LogVerb.Trace, $"Full path: {binPath}");
-                ModLogger.LogDebug(LogVerb.Trace, $"File exists: {File.Exists(binPath)}");
+                ModLogger.Debug(LogVerb.Trace, $"Character: '{characterName}', Theme: '{theme}', Folder: '{characterThemeFolder}', File: '{spriteFileName}'");
+                ModLogger.Debug(LogVerb.Trace, $"Full path: {binPath}");
+                ModLogger.Debug(LogVerb.Trace, $"File exists: {File.Exists(binPath)}");
 
                 // If not found, try the generic theme folder (for characters without special themes)
                 if (!File.Exists(binPath))
                 {
                     string genericThemeFolder = $"sprites_{themeFolderName}";
                     binPath = Path.Combine(unitPath, genericThemeFolder, spriteFileName);
-                    ModLogger.LogDebug(LogVerb.Ui, $"Not found, trying generic theme folder: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Not found, trying generic theme folder: {binPath}");
                 }
 
                 // Finally, try the main unit folder (for original sprites)
                 if (!File.Exists(binPath))
                 {
                     binPath = Path.Combine(unitPath, spriteFileName);
-                    ModLogger.LogDebug(LogVerb.Ui, $"Not found, trying main unit folder: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Not found, trying main unit folder: {binPath}");
                 }
 
                 if (!File.Exists(binPath))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Bin file not found: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Bin file not found: {binPath}");
                     return null;
                 }
 
                 // Read the bin file
                 byte[] binData = File.ReadAllBytes(binPath);
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded bin file: {binPath}, Size: {binData.Length} bytes");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded bin file: {binPath}, Size: {binData.Length} bytes");
 
                 // Extract only 4 corner directions for faster loading
                 // Themed sprites should use palette 0 (they have their own color data)
@@ -960,7 +960,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
 
                 var sprites = _binExtractor.ExtractCornerDirections(binData, 0, paletteIndex);
-                ModLogger.LogDebug(LogVerb.Ui, $"Extracted {sprites.Length} corner sprites from bin file using palette {paletteIndex} for theme '{theme}'");
+                ModLogger.Debug(LogVerb.Ui, $"Extracted {sprites.Length} corner sprites from bin file using palette {paletteIndex} for theme '{theme}'");
 
                 // Return 4 corner sprites, NE, SE, SW, NW (for smooth rotation)
                 var carouselImages = new Image[]
@@ -971,33 +971,33 @@ namespace FFTColorCustomizer.Configuration.UI
                     sprites[1]  // SE
                 };
 
-                ModLogger.LogDebug(LogVerb.Ui, $"Successfully loaded 4 corner sprites from .bin: {binPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Successfully loaded 4 corner sprites from .bin: {binPath}");
 
                 return carouselImages;
             }
             catch (Exception ex)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Failed to load from .bin file: {ex.Message}");
+                ModLogger.Debug(LogVerb.Ui, $"Failed to load from .bin file: {ex.Message}");
                 return null;
             }
         }
 
         private Image[] TryLoadStoryCharacterUserThemeFromBinFile(string modPath, string unitPath, string spriteFileName, string characterName, string themeName)
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Loading user theme '{themeName}' for {characterName}");
+            ModLogger.Debug(LogVerb.Ui, $"Loading user theme '{themeName}' for {characterName}");
 
             // Get the user theme palette path
             var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
             if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"User theme palette not found: {palettePath}");
+                ModLogger.Warn(LogVerb.Ui, $"User theme palette not found: {palettePath}");
                 return null;
             }
 
             var userPalette = File.ReadAllBytes(palettePath);
             if (userPalette.Length != 512)
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
+                ModLogger.Warn(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
                 return null;
             }
 
@@ -1011,13 +1011,13 @@ namespace FFTColorCustomizer.Configuration.UI
                 var hdImages = hdLoader.LoadPreviewsWithUserPalette(characterName, userPalette);
                 if (hdImages != null && hdImages.Count > 0)
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', HD sheet + user palette");
+                    ModLogger.Debug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', HD sheet + user palette");
                     return hdImages.Cast<Image>().ToArray();
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+                ModLogger.Debug(LogVerb.Ui, $"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
             }
 
             // For story characters, original sprites may be in character-specific folders
@@ -1032,18 +1032,18 @@ namespace FFTColorCustomizer.Configuration.UI
             if (File.Exists(characterOriginalFile))
             {
                 originalFile = characterOriginalFile;
-                ModLogger.LogDebug(LogVerb.Ui, $"Using character-specific original: {originalFile}");
+                ModLogger.Debug(LogVerb.Ui, $"Using character-specific original: {originalFile}");
             }
             else if (File.Exists(genericOriginalFile))
             {
                 originalFile = genericOriginalFile;
-                ModLogger.LogDebug(LogVerb.Ui, $"Using generic original: {originalFile}");
+                ModLogger.Debug(LogVerb.Ui, $"Using generic original: {originalFile}");
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Original sprite not found for story character user theme preview:");
-                ModLogger.LogWarning(LogVerb.Ui, $"Character specific original not found at {characterOriginalFile}");
-                ModLogger.LogWarning(LogVerb.Ui, $"Generic original not found at {genericOriginalFile}");
+                ModLogger.Warn(LogVerb.Ui, $"Original sprite not found for story character user theme preview:");
+                ModLogger.Warn(LogVerb.Ui, $"Character specific original not found at {characterOriginalFile}");
+                ModLogger.Warn(LogVerb.Ui, $"Generic original not found at {genericOriginalFile}");
                 return null;
             }
 
@@ -1068,7 +1068,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 cornerSprites[1]  // SE
             };
 
-            ModLogger.LogDebug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', Using external palette");
+            ModLogger.Debug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', Using external palette");
             return carouselSprites;
         }
 
@@ -1108,14 +1108,14 @@ namespace FFTColorCustomizer.Configuration.UI
                         var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit_psp");
                         if (Directory.Exists(versionedPath))
                         {
-                            ModLogger.LogDebug(LogVerb.Ui, $"Found FFTIVC unit_psp for WotL previews in versioned directory: {versionedPath}");
+                            ModLogger.Debug(LogVerb.Ui, $"Found FFTIVC unit_psp for WotL previews in versioned directory: {versionedPath}");
                             return versionedPath;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogWarning(LogVerb.Ui, $"Error searching for versioned directories: {ex.Message}");
+                    ModLogger.Warn(LogVerb.Ui, $"Error searching for versioned directories: {ex.Message}");
                 }
             }
 
@@ -1192,7 +1192,7 @@ namespace FFTColorCustomizer.Configuration.UI
             }
             catch (Exception ex)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"{jobName} - {theme}: {ex.Message}");
+                ModLogger.Debug(LogVerb.Ui, $"{jobName} - {theme}: {ex.Message}");
                 return null;
             }
         }
@@ -1238,7 +1238,7 @@ namespace FFTColorCustomizer.Configuration.UI
         {
             try
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Starting for {jobName} - {theme}");
+                ModLogger.Debug(LogVerb.Ui, $"Starting for {jobName} - {theme}");
                 // Get the mod path from PreviewImageManager
                 var modPathField = _previewManager.GetType().GetField("_modPath",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -1271,33 +1271,33 @@ namespace FFTColorCustomizer.Configuration.UI
                 string jobSpecificFolderName = $"sprites_{jobType}_{theme.ToLower().Replace(" ", "_")}";
                 string binPath = Path.Combine(unitPath, jobSpecificFolderName, spriteFileName);
 
-                ModLogger.LogDebug(LogVerb.Trace, $"Job: '{jobName}' → JobType: '{jobType}' → Folder: '{jobSpecificFolderName}'");
-                ModLogger.LogDebug(LogVerb.Ui, $"Looking for job-specific themed sprite at: {binPath}");
+                ModLogger.Debug(LogVerb.Trace, $"Job: '{jobName}' → JobType: '{jobType}' → Folder: '{jobSpecificFolderName}'");
+                ModLogger.Debug(LogVerb.Ui, $"Looking for job-specific themed sprite at: {binPath}");
 
                 // If job-specific doesn't exist, try generic theme folder (e.g., sprites_crimson_red/battle_knight_m_spr.bin)
                 if (!File.Exists(binPath))
                 {
                     string themeFolderName = $"sprites_{theme.ToLower().Replace(" ", "_")}";
                     binPath = Path.Combine(unitPath, themeFolderName, spriteFileName);
-                    ModLogger.LogDebug(LogVerb.Ui, $"Job-specific not found, trying generic themed sprite at: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Job-specific not found, trying generic themed sprite at: {binPath}");
                 }
 
                 // If themed version doesn't exist, fall back to main unit folder
                 if (!File.Exists(binPath))
                 {
                     binPath = Path.Combine(unitPath, spriteFileName);
-                    ModLogger.LogDebug(LogVerb.Ui, $"Themed sprite not found, trying main unit folder: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Themed sprite not found, trying main unit folder: {binPath}");
                 }
 
                 if (!File.Exists(binPath))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Generic bin file not found: {binPath}");
+                    ModLogger.Debug(LogVerb.Ui, $"Generic bin file not found: {binPath}");
                     return null;
                 }
 
                 // Read the bin file
                 byte[] binData = File.ReadAllBytes(binPath);
-                ModLogger.LogDebug(LogVerb.Ui, $"Loaded generic bin file: {binPath}, Size: {binData.Length} bytes");
+                ModLogger.Debug(LogVerb.Ui, $"Loaded generic bin file: {binPath}, Size: {binData.Length} bytes");
 
                 // Extract all 8 directional sprites for carousel
                 // For themed sprites, use palette 0 (they have the theme colors baked in)
@@ -1314,30 +1314,30 @@ namespace FFTColorCustomizer.Configuration.UI
                     cornerSprites[1]  // SE
                 };
 
-                ModLogger.LogDebug(LogVerb.Ui, $"Job: '{jobName}', Theme: '{theme}', Using themed sprite file");
-                ModLogger.LogDebug(LogVerb.Ui, $"Extracted 4 corner sprites from themed bin file");
+                ModLogger.Debug(LogVerb.Ui, $"Job: '{jobName}', Theme: '{theme}', Using themed sprite file");
+                ModLogger.Debug(LogVerb.Ui, $"Extracted 4 corner sprites from themed bin file");
 
                 // Return 4 corner sprites for carousel
-                ModLogger.LogDebug(LogVerb.Ui, $"Success - returning 4 corner sprites");
+                ModLogger.Debug(LogVerb.Ui, $"Success - returning 4 corner sprites");
                 return carouselSprites;
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Ui, $"FAILED for {jobName} - {theme}: {ex.Message}");
-                ModLogger.LogDebug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
+                ModLogger.Error(LogVerb.Ui, $"FAILED for {jobName} - {theme}: {ex.Message}");
+                ModLogger.Debug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
                 return null;
             }
         }
 
         private Image[] TryLoadUserThemeFromBinFile(string modPath, string unitPath, string spriteFileName, string jobProperty, string themeName)
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Loading user theme '{themeName}' for {jobProperty}");
+            ModLogger.Debug(LogVerb.Ui, $"Loading user theme '{themeName}' for {jobProperty}");
 
             // Get the user theme palette path
             var palettePath = _userThemeService.GetUserThemePalettePath(jobProperty, themeName);
             if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"User theme palette not found: {palettePath}");
+                ModLogger.Warn(LogVerb.Ui, $"User theme palette not found: {palettePath}");
                 return null;
             }
 
@@ -1346,7 +1346,7 @@ namespace FFTColorCustomizer.Configuration.UI
             var originalFile = Path.Combine(originalDir, spriteFileName);
             if (!File.Exists(originalFile))
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Original sprite not found for user theme preview: {originalFile}");
+                ModLogger.Warn(LogVerb.Ui, $"Original sprite not found for user theme preview: {originalFile}");
                 return null;
             }
 
@@ -1357,7 +1357,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Validate palette size
             if (userPalette.Length != 512)
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
+                ModLogger.Warn(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
                 return null;
             }
 
@@ -1373,19 +1373,19 @@ namespace FFTColorCustomizer.Configuration.UI
                 cornerSprites[1]  // SE
             };
 
-            ModLogger.LogDebug(LogVerb.Ui, $"Job: '{jobProperty}', Theme: '{themeName}', Using external palette");
+            ModLogger.Debug(LogVerb.Ui, $"Job: '{jobProperty}', Theme: '{themeName}', Using external palette");
             return carouselSprites;
         }
 
         private Image[] TryLoadRamzaUserThemePreview(string modPath, string characterName, string themeName)
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Loading user theme '{themeName}' for {characterName}");
+            ModLogger.Debug(LogVerb.Ui, $"Loading user theme '{themeName}' for {characterName}");
 
             // Get the user theme palette path
             var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
             if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"User theme palette not found: {palettePath}");
+                ModLogger.Warn(LogVerb.Ui, $"User theme palette not found: {palettePath}");
                 return null;
             }
 
@@ -1400,7 +1400,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
             if (spriteFileName == null)
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Unknown Ramza character: {characterName}");
+                ModLogger.Warn(LogVerb.Ui, $"Unknown Ramza character: {characterName}");
                 return null;
             }
 
@@ -1408,7 +1408,7 @@ namespace FFTColorCustomizer.Configuration.UI
             string unitPath = FindActualUnitPath(modPath);
             if (string.IsNullOrEmpty(unitPath))
             {
-                ModLogger.LogWarning(LogVerb.Ui, "Could not find unit path for Ramza preview");
+                ModLogger.Warn(LogVerb.Ui, "Could not find unit path for Ramza preview");
                 return null;
             }
 
@@ -1417,7 +1417,7 @@ namespace FFTColorCustomizer.Configuration.UI
             var originalFile = Path.Combine(originalDir, spriteFileName);
             if (!File.Exists(originalFile))
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Original Ramza sprite not found: {originalFile}");
+                ModLogger.Warn(LogVerb.Ui, $"Original Ramza sprite not found: {originalFile}");
                 return null;
             }
 
@@ -1428,7 +1428,7 @@ namespace FFTColorCustomizer.Configuration.UI
             // Validate palette size
             if (userPalette.Length != 512)
             {
-                ModLogger.LogWarning(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
+                ModLogger.Warn(LogVerb.Ui, $"Invalid user palette size: {userPalette.Length} (expected 512)");
                 return null;
             }
 
@@ -1443,7 +1443,7 @@ namespace FFTColorCustomizer.Configuration.UI
             }
             catch (Exception ex)
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+                ModLogger.Debug(LogVerb.Ui, $"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
             }
 
             // Fallback, legacy pixelated bin extraction
@@ -1458,7 +1458,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 cornerSprites[1]  // SE
             };
 
-            ModLogger.LogDebug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', Using external palette (legacy bin path)");
+            ModLogger.Debug(LogVerb.Ui, $"Character: '{characterName}', Theme: '{themeName}', Using external palette (legacy bin path)");
             return carouselSprites;
         }
 
@@ -1594,7 +1594,7 @@ namespace FFTColorCustomizer.Configuration.UI
                         .Replace("(", "")
                         .Replace(")", "");
                     string fileName = $"battle_{baseName}_spr.bin";
-                    ModLogger.LogDebug(LogVerb.Ui, $"ConvertJobNameToSpriteFile: '{jobName}' -> '{fileName}' (fallback)");
+                    ModLogger.Debug(LogVerb.Ui, $"ConvertJobNameToSpriteFile: '{jobName}' -> '{fileName}' (fallback)");
                     return fileName;
             }
         }
@@ -1676,7 +1676,7 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 // Default to original if theme not found
                 default:
-                    ModLogger.LogDebug(LogVerb.Ui, $"Theme '{theme}' not mapped to palette, using default (0)");
+                    ModLogger.Debug(LogVerb.Ui, $"Theme '{theme}' not mapped to palette, using default (0)");
                     return 0;
             }
         }

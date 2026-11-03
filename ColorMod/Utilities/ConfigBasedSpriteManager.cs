@@ -45,30 +45,30 @@ namespace FFTColorCustomizer.Utilities
             // Initialize user theme service
             _userThemeService = new UserThemeService(_modPath);
 
-            ModLogger.LogDebug(LogVerb.Trace, "ConfigBasedSpriteManager initialized:");
-            ModLogger.LogDebug(LogVerb.Trace, $"  Mod path: {_modPath}");
-            ModLogger.LogDebug(LogVerb.Trace, $"  Source path: {_sourcePath}");
-            ModLogger.LogDebug(LogVerb.Trace, $"  Unit path (destination): {_unitPath}");
-            ModLogger.LogDebug(LogVerb.Trace, $"  Source unit path: {_sourceUnitPath}");
+            ModLogger.Debug(LogVerb.Trace, "ConfigBasedSpriteManager initialized:");
+            ModLogger.Debug(LogVerb.Trace, $"  Mod path: {_modPath}");
+            ModLogger.Debug(LogVerb.Trace, $"  Source path: {_sourcePath}");
+            ModLogger.Debug(LogVerb.Trace, $"  Unit path (destination): {_unitPath}");
+            ModLogger.Debug(LogVerb.Trace, $"  Source unit path: {_sourceUnitPath}");
 
             // Check if the FFTIVC folder exists
             if (Directory.Exists(_sourceUnitPath))
             {
-                ModLogger.LogDebug(LogVerb.Trace, $"  FFTIVC folder EXISTS at: {_sourceUnitPath}");
+                ModLogger.Debug(LogVerb.Trace, $"  FFTIVC folder EXISTS at: {_sourceUnitPath}");
                 var themeDirs = Directory.GetDirectories(_sourceUnitPath, "sprites_*");
-                ModLogger.LogDebug(LogVerb.Trace, $"  Found {themeDirs.Length} theme directories");
+                ModLogger.Debug(LogVerb.Trace, $"  Found {themeDirs.Length} theme directories");
             }
             else
             {
-                ModLogger.LogError(LogVerb.Trace, $"FFTIVC folder missing at {_sourceUnitPath}");
-                ModLogger.LogDebug(LogVerb.Trace, $"  Checking parent directory: {_modPath}");
+                ModLogger.Error(LogVerb.Trace, $"FFTIVC folder missing at {_sourceUnitPath}");
+                ModLogger.Debug(LogVerb.Trace, $"  Checking parent directory: {_modPath}");
                 if (Directory.Exists(_modPath))
                 {
                     var contents = Directory.GetDirectories(_modPath);
-                    ModLogger.LogDebug(LogVerb.Trace, $"  Contents of mod directory ({contents.Length} items):");
+                    ModLogger.Debug(LogVerb.Trace, $"  Contents of mod directory ({contents.Length} items):");
                     foreach (var dir in contents.Take(10))
                     {
-                        ModLogger.LogDebug(LogVerb.Trace, $"    - {Path.GetFileName(dir)}");
+                        ModLogger.Debug(LogVerb.Trace, $"    - {Path.GetFileName(dir)}");
                     }
                 }
             }
@@ -80,7 +80,7 @@ namespace FFTColorCustomizer.Utilities
             var directPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             if (Directory.Exists(directPath))
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Found FFTIVC at direct path: {directPath}");
+                ModLogger.Debug(LogVerb.Sprite, $"Found FFTIVC at direct path: {directPath}");
                 return directPath;
             }
 
@@ -107,19 +107,19 @@ namespace FFTColorCustomizer.Utilities
                         var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
                         if (Directory.Exists(versionedPath))
                         {
-                            ModLogger.LogDebug(LogVerb.Sprite, $"Found FFTIVC in versioned directory: {versionedPath}");
+                            ModLogger.Debug(LogVerb.Sprite, $"Found FFTIVC in versioned directory: {versionedPath}");
                             return versionedPath;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Error searching for versioned directories: {ex.Message}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Error searching for versioned directories: {ex.Message}");
                 }
             }
 
             // As a fallback, return the expected path even if it doesn't exist
-            ModLogger.LogWarning(LogVerb.Sprite, $"FFTIVC not found, using expected path: {directPath}");
+            ModLogger.Warn(LogVerb.Sprite, $"FFTIVC not found, using expected path: {directPath}");
             return directPath;
         }
 
@@ -134,7 +134,7 @@ namespace FFTColorCustomizer.Utilities
 
         public void ApplyConfiguration()
         {
-            ModLogger.LogDebug(LogVerb.Theme, "ApplyConfiguration called");
+            ModLogger.Debug(LogVerb.Theme, "ApplyConfiguration called");
             var config = _configManager.LoadConfig();
 
             // Apply generic job class themes
@@ -150,10 +150,10 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Monster, $"Apply failed: {ex.Message}");
+                ModLogger.Error(LogVerb.Monster, $"Apply failed: {ex.Message}");
             }
 
-            ModLogger.LogDebug(LogVerb.Theme, "ApplyConfiguration completed");
+            ModLogger.Debug(LogVerb.Theme, "ApplyConfiguration completed");
         }
 
         private void ApplyGenericJobThemes(Config config)
@@ -165,19 +165,19 @@ namespace FFTColorCustomizer.Utilities
 
             // Log all properties found
             var propList = properties.ToList();
-            ModLogger.LogDebug(LogVerb.Trace, $"Found {propList.Count} job properties to process");
+            ModLogger.Debug(LogVerb.Trace, $"Found {propList.Count} job properties to process");
             foreach (var prop in propList)
             {
-                ModLogger.LogDebug(LogVerb.Trace, $"- Property: {prop.Name}, Type: {prop.PropertyType.Name}");
+                ModLogger.Debug(LogVerb.Trace, $"- Property: {prop.Name}, Type: {prop.PropertyType.Name}");
             }
 
             // Additional debug, Check specifically for Archer properties
             var allProps = typeof(Config).GetProperties();
             var archerProps = allProps.Where(p => p.Name.Contains("Archer")).ToList();
-            ModLogger.LogDebug(LogVerb.Trace, $"Archer-specific properties found: {archerProps.Count}");
+            ModLogger.Debug(LogVerb.Trace, $"Archer-specific properties found: {archerProps.Count}");
             foreach (var ap in archerProps)
             {
-                ModLogger.LogDebug(LogVerb.Trace, $"- Archer prop: {ap.Name}, CanRead: {ap.CanRead}, CanWrite: {ap.CanWrite}");
+                ModLogger.Debug(LogVerb.Trace, $"- Archer prop: {ap.Name}, CanRead: {ap.CanRead}, CanWrite: {ap.CanWrite}");
             }
 
             foreach (var property in propList)
@@ -187,13 +187,13 @@ namespace FFTColorCustomizer.Utilities
                     var colorScheme = property.GetValue(config) as string ?? "original";
 
                     // Log what we're applying
-                    ModLogger.LogDebug(LogVerb.Theme, $"Applying {property.Name}: {colorScheme}");
+                    ModLogger.Debug(LogVerb.Theme, $"Applying {property.Name}: {colorScheme}");
 
                     // Special debug for Archer
                     if (property.Name.Contains("Archer"))
                     {
-                        ModLogger.LogDebug(LogVerb.Trace, $"Processing Archer property: {property.Name}");
-                        ModLogger.LogDebug(LogVerb.Trace, $"Value retrieved: {colorScheme}");
+                        ModLogger.Debug(LogVerb.Trace, $"Processing Archer property: {property.Name}");
+                        ModLogger.Debug(LogVerb.Trace, $"Value retrieved: {colorScheme}");
                     }
 
                     // Get the sprite name for this job/gender
@@ -202,7 +202,7 @@ namespace FFTColorCustomizer.Utilities
                     // Special debug for Archer
                     if (property.Name.Contains("Archer"))
                     {
-                        ModLogger.LogDebug(LogVerb.Trace, $"Sprite name returned: {spriteName ?? "NULL"}");
+                        ModLogger.Debug(LogVerb.Trace, $"Sprite name returned: {spriteName ?? "NULL"}");
                     }
 
                     if (spriteName != null)
@@ -213,8 +213,8 @@ namespace FFTColorCustomizer.Utilities
                         // Special debug for Archer
                         if (property.Name.Contains("Archer"))
                         {
-                            ModLogger.LogDebug(LogVerb.Trace, $"Job type: {jobType}");
-                            ModLogger.LogDebug(LogVerb.Trace, $"Calling CopySpriteForJobWithType({spriteName}, {colorScheme}, {jobType})");
+                            ModLogger.Debug(LogVerb.Trace, $"Job type: {jobType}");
+                            ModLogger.Debug(LogVerb.Trace, $"Calling CopySpriteForJobWithType({spriteName}, {colorScheme}, {jobType})");
                         }
 
                         CopySpriteForJobWithType(spriteName, colorScheme, jobType);
@@ -222,8 +222,8 @@ namespace FFTColorCustomizer.Utilities
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Trace, $"Error processing property {property.Name}: {ex.Message}");
-                    ModLogger.LogDebug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
+                    ModLogger.Error(LogVerb.Trace, $"Error processing property {property.Name}: {ex.Message}");
+                    ModLogger.Debug(LogVerb.Trace, $"Stack trace: {ex.StackTrace}");
                 }
             }
         }
@@ -232,7 +232,7 @@ namespace FFTColorCustomizer.Utilities
         {
             if (_characterService == null)
             {
-                ModLogger.LogWarning(LogVerb.Theme, "CharacterDefinitionService is null, skipping story character themes");
+                ModLogger.Warn(LogVerb.Theme, "CharacterDefinitionService is null, skipping story character themes");
                 return;
             }
 
@@ -269,7 +269,7 @@ namespace FFTColorCustomizer.Utilities
 
         private void ApplyStoryCharacterTheme(string characterName, string spriteName, string themeName, bool skipNxdForRamza = false)
         {
-            ModLogger.LogDebug(LogVerb.Theme, $"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
+            ModLogger.Debug(LogVerb.Theme, $"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
             // For "original" theme, restore the original sprite by copying from sprites_original directory.
             // Some story characters (Construct 8 = tetsu) only ship their vanilla in a character-specific
@@ -277,7 +277,7 @@ namespace FFTColorCustomizer.Utilities
             // both before giving up, same fallback the user-theme path already uses.
             if (themeName.ToLower() == "original")
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Restoring original sprite for {characterName}/{spriteName}");
+                ModLogger.Debug(LogVerb.Sprite, $"Restoring original sprite for {characterName}/{spriteName}");
 
                 var spriteFileName = $"battle_{spriteName}_spr.bin";
                 var characterOriginalFile = Path.Combine(_sourceUnitPath, $"sprites_{characterName}_original", spriteFileName);
@@ -288,12 +288,12 @@ namespace FFTColorCustomizer.Utilities
                 if (File.Exists(characterOriginalFile))
                 {
                     originalFile = characterOriginalFile;
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Using character-specific original: {originalFile}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Using character-specific original: {originalFile}");
                 }
                 else if (File.Exists(genericOriginalFile))
                 {
                     originalFile = genericOriginalFile;
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Using generic original: {originalFile}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Using generic original: {originalFile}");
                 }
 
                 if (originalFile != null)
@@ -301,25 +301,25 @@ namespace FFTColorCustomizer.Utilities
                     try
                     {
                         File.Copy(originalFile, storyDestFile, true);
-                        ModLogger.LogDebug(LogVerb.Sprite, $"Restored original sprite for {characterName}: {spriteName}");
+                        ModLogger.Debug(LogVerb.Sprite, $"Restored original sprite for {characterName}: {spriteName}");
                     }
                     catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
                     {
-                        ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
+                        ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
+                        ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
                     }
                     catch (Exception ex)
                     {
                         // Other unexpected errors should still be logged as errors
-                        ModLogger.LogError(LogVerb.Sprite, $"Failed to restore original sprite for {characterName}/{spriteName}: {ex.Message}");
+                        ModLogger.Error(LogVerb.Sprite, $"Failed to restore original sprite for {characterName}/{spriteName}: {ex.Message}");
                     }
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Original sprite not found for {characterName}: {originalFile}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Original sprite not found for {characterName}: {originalFile}");
                 }
                 return;
             }
@@ -335,22 +335,22 @@ namespace FFTColorCustomizer.Utilities
             {
                 if (skipNxdForRamza)
                 {
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Skipping individual NXD patch for {properCharacterName}/{themeName} (handled by ApplyAllRamzaChaptersToNxd)");
+                    ModLogger.Debug(LogVerb.Ramza, $"Skipping individual NXD patch for {properCharacterName}/{themeName} (handled by ApplyAllRamzaChaptersToNxd)");
                 }
                 else
                 {
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Applying built-in Ramza theme: {properCharacterName}/{themeName}");
+                    ModLogger.Debug(LogVerb.Ramza, $"Applying built-in Ramza theme: {properCharacterName}/{themeName}");
                     ApplyBuiltInRamzaThemeToNxd(properCharacterName, themeName);
                 }
                 return;
             }
 
             var isUserTheme = _userThemeService.IsUserTheme(properCharacterName, themeName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Checking user theme: character={properCharacterName}, theme={themeName}, isUserTheme={isUserTheme}");
+            ModLogger.Debug(LogVerb.Sprite, $"Checking user theme: character={properCharacterName}, theme={themeName}, isUserTheme={isUserTheme}");
 
             if (isUserTheme)
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Applying user theme for {properCharacterName}/{themeName}");
+                ModLogger.Debug(LogVerb.Sprite, $"Applying user theme for {properCharacterName}/{themeName}");
                 ApplyStoryCharacterUserTheme($"battle_{spriteName}_spr.bin", themeName, properCharacterName);
                 return;
             }
@@ -367,18 +367,18 @@ namespace FFTColorCustomizer.Utilities
             if (File.Exists(sourceDirPath))
             {
                 sourceFile = sourceDirPath;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using directory-based theme: {themeDir}");
+                ModLogger.Debug(LogVerb.Sprite, $"Using directory-based theme: {themeDir}");
             }
             else if (File.Exists(sourceFlatPath))
             {
                 sourceFile = sourceFlatPath;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
+                ModLogger.Debug(LogVerb.Sprite, $"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Theme file not found for {characterName} theme {themeName}");
-                ModLogger.LogDebug(LogVerb.Sprite, $"  Tried: {sourceDirPath}");
-                ModLogger.LogDebug(LogVerb.Sprite, $"  Tried: {sourceFlatPath}");
+                ModLogger.Warn(LogVerb.Sprite, $"Theme file not found for {characterName} theme {themeName}");
+                ModLogger.Debug(LogVerb.Sprite, $"  Tried: {sourceDirPath}");
+                ModLogger.Debug(LogVerb.Sprite, $"  Tried: {sourceFlatPath}");
                 return;
             }
 
@@ -392,24 +392,24 @@ namespace FFTColorCustomizer.Utilities
                 if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
                 {
                     Directory.CreateDirectory(destDir);
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Created destination directory: {destDir}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Created destination directory: {destDir}");
                 }
 
                 File.Copy(sourceFile, destFile, true);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
+                ModLogger.Debug(LogVerb.Sprite, $"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
             }
             catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
+                ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
             }
             catch (UnauthorizedAccessException)
             {
-                ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
+                ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
             }
             catch (Exception ex)
             {
                 // Log other unexpected errors
-                ModLogger.LogError(LogVerb.Sprite, $"Error copying {characterName} sprite: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Error copying {characterName} sprite: {ex.Message}");
             }
         }
 
@@ -429,20 +429,20 @@ namespace FFTColorCustomizer.Utilities
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
             if (propertyInfo == null)
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Property not found: {jobProperty}");
+                ModLogger.Warn(LogVerb.Sprite, $"Property not found: {jobProperty}");
                 return originalPath;
             }
 
             var colorSchemeValue = propertyInfo.GetValue(config);
             if (colorSchemeValue == null || !(colorSchemeValue is string))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"No color scheme for: {jobProperty}");
+                ModLogger.Warn(LogVerb.Sprite, $"No color scheme for: {jobProperty}");
                 return originalPath;
             }
 
             var colorSchemeOriginal = colorSchemeValue.ToString();
             var colorScheme = colorSchemeOriginal.ToLower();
-            ModLogger.LogDebug(LogVerb.Sprite, $"{jobProperty} configured as: {colorScheme}");
+            ModLogger.Debug(LogVerb.Sprite, $"{jobProperty} configured as: {colorScheme}");
 
             if (colorScheme == "original")
             {
@@ -455,7 +455,7 @@ namespace FFTColorCustomizer.Utilities
             var isUserTheme = _userThemeService.IsUserTheme(jobProperty, colorSchemeOriginal);
             if (isUserTheme)
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"{jobProperty} uses user theme '{colorSchemeOriginal}' - file should be in base folder");
+                ModLogger.Debug(LogVerb.Sprite, $"{jobProperty} uses user theme '{colorSchemeOriginal}' - file should be in base folder");
                 // Return original path, ApplyConfiguration already placed the themed sprite there
                 return originalPath;
             }
@@ -466,7 +466,7 @@ namespace FFTColorCustomizer.Utilities
             var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Redirecting {fileName} to themed variant: {colorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Redirecting {fileName} to themed variant: {colorScheme}");
                 return variantPath;
             }
 
@@ -475,7 +475,7 @@ namespace FFTColorCustomizer.Utilities
             var sourceVariantPath = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(sourceVariantPath))
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Theme file exists in source but not deployed: {colorScheme}/{fileName}");
+                ModLogger.Debug(LogVerb.Sprite, $"Theme file exists in source but not deployed: {colorScheme}/{fileName}");
                 // Return original path since we can't copy during interception
                 return originalPath;
             }
@@ -606,12 +606,12 @@ namespace FFTColorCustomizer.Utilities
 
             // Get the correct unit path for this job (WotL jobs use unit_psp)
             var unitPath = GetUnitPathForJob(jobName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
+            ModLogger.Debug(LogVerb.Sprite, $"Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
 
             // For "original" theme, we need to restore the original sprite by copying from sprites_original directory
             if (colorScheme.ToLower() == "original")
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Restoring original sprite for {spriteName}");
+                ModLogger.Debug(LogVerb.Sprite, $"Restoring original sprite for {spriteName}");
 
                 // Copy from sprites_original directory to ensure we overwrite any custom theme
                 var originalDir = Path.Combine(unitPath, "sprites_original");
@@ -623,45 +623,45 @@ namespace FFTColorCustomizer.Utilities
                     try
                     {
                         File.Copy(originalFile, originalDestFile, true);
-                        ModLogger.LogDebug(LogVerb.Sprite, $"Restored original sprite: {spriteName}");
+                        ModLogger.Debug(LogVerb.Sprite, $"Restored original sprite: {spriteName}");
                     }
                     catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
                     {
-                        ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
+                        ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
+                        ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
                     }
                     catch (Exception ex)
                     {
                         // Other unexpected errors should still be logged as errors
-                        ModLogger.LogError(LogVerb.Sprite, $"Failed to restore original sprite {spriteName}: {ex.Message}");
+                        ModLogger.Error(LogVerb.Sprite, $"Failed to restore original sprite {spriteName}: {ex.Message}");
                     }
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Original sprite not found: {originalFile}");
+                    ModLogger.Warn(LogVerb.Sprite, $"Original sprite not found: {originalFile}");
                 }
                 return;
             }
 
-            ModLogger.LogDebug(LogVerb.Sprite, $"jobType={jobType}, spriteName={spriteName} -> jobName={jobName}");
+            ModLogger.Debug(LogVerb.Sprite, $"jobType={jobType}, spriteName={spriteName} -> jobName={jobName}");
 
             // Check if this is a user-created theme
             var isUserTheme = _userThemeService.IsUserTheme(jobName, colorScheme);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Checking user theme: jobName={jobName}, colorScheme={colorScheme}, isUserTheme={isUserTheme}");
+            ModLogger.Debug(LogVerb.Sprite, $"Checking user theme: jobName={jobName}, colorScheme={colorScheme}, isUserTheme={isUserTheme}");
 
             if (isUserTheme)
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Calling ApplyUserTheme for {jobName}/{colorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Calling ApplyUserTheme for {jobName}/{colorScheme}");
                 ApplyUserTheme(spriteName, colorScheme, jobName);
                 return;
             }
 
             // Log the paths being used
-            ModLogger.LogDebug(LogVerb.Sprite, $"Looking for {spriteName} with theme {colorScheme}");
-            ModLogger.LogDebug(LogVerb.Sprite, $"  unitPath: {unitPath}");
+            ModLogger.Debug(LogVerb.Sprite, $"Looking for {spriteName} with theme {colorScheme}");
+            ModLogger.Debug(LogVerb.Sprite, $"  unitPath: {unitPath}");
 
             // First check for job-specific theme directory (e.g., sprites_mediator_holy_knight)
             var jobSpecificDir = Path.Combine(unitPath, $"sprites_{jobType}_{colorScheme}");
@@ -673,37 +673,37 @@ namespace FFTColorCustomizer.Utilities
 
             var destFile = Path.Combine(unitPath, spriteName);
 
-            ModLogger.LogDebug(LogVerb.Sprite, $"  Checking job-specific: {jobSpecificFile}");
-            ModLogger.LogDebug(LogVerb.Sprite, $"  Checking generic: {genericFile}");
-            ModLogger.LogDebug(LogVerb.Sprite, $"  Destination: {destFile}");
+            ModLogger.Debug(LogVerb.Sprite, $"  Checking job-specific: {jobSpecificFile}");
+            ModLogger.Debug(LogVerb.Sprite, $"  Checking generic: {genericFile}");
+            ModLogger.Debug(LogVerb.Sprite, $"  Destination: {destFile}");
 
             string sourceFile;
             if (File.Exists(jobSpecificFile))
             {
                 sourceFile = jobSpecificFile;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using job-specific theme: sprites_{jobType}_{colorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Using job-specific theme: sprites_{jobType}_{colorScheme}");
             }
             else if (File.Exists(genericFile))
             {
                 sourceFile = genericFile;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using generic theme: sprites_{colorScheme}");
+                ModLogger.Debug(LogVerb.Sprite, $"Using generic theme: sprites_{colorScheme}");
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Theme not found: tried sprites_{jobType}_{colorScheme} and sprites_{colorScheme}");
+                ModLogger.Warn(LogVerb.Sprite, $"Theme not found: tried sprites_{jobType}_{colorScheme} and sprites_{colorScheme}");
                 // Log what files actually exist in the source directory for debugging
                 if (Directory.Exists(unitPath))
                 {
                     var dirs = Directory.GetDirectories(unitPath, "sprites_*");
-                    ModLogger.LogDebug(LogVerb.Sprite, $"  Available theme directories: {dirs.Length} found");
+                    ModLogger.Debug(LogVerb.Sprite, $"  Available theme directories: {dirs.Length} found");
                     foreach (var dir in dirs.Take(5))
                     {
-                        ModLogger.LogDebug(LogVerb.Sprite, $"    - {Path.GetFileName(dir)}");
+                        ModLogger.Debug(LogVerb.Sprite, $"    - {Path.GetFileName(dir)}");
                     }
                 }
                 else
                 {
-                    ModLogger.LogError(LogVerb.Sprite, $"Unit path does not exist at {unitPath}");
+                    ModLogger.Error(LogVerb.Sprite, $"Unit path does not exist at {unitPath}");
                 }
                 return;
             }
@@ -715,23 +715,23 @@ namespace FFTColorCustomizer.Utilities
                 if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
                 {
                     Directory.CreateDirectory(destDir);
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Created destination directory: {destDir}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Created destination directory: {destDir}");
                 }
 
                 File.Copy(sourceFile, destFile, true);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Copied {colorScheme} theme for {jobType} to {destFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"Copied {colorScheme} theme for {jobType} to {destFile}");
             }
             catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
+                ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
             }
             catch (UnauthorizedAccessException)
             {
-                ModLogger.LogWarning(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
+                ModLogger.Warn(LogVerb.Sprite, SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Sprite, $"Copying the sprite failed: {ex.Message}");
+                ModLogger.Error(LogVerb.Sprite, $"Copying the sprite failed: {ex.Message}");
             }
         }
 
@@ -740,7 +740,7 @@ namespace FFTColorCustomizer.Utilities
             // Skip copying for "original" theme, it uses the game's default sprites
             if (colorScheme.ToLower() == "original")
             {
-                ModLogger.LogDebug(LogVerb.Sprite, $"Skipping copy for {spriteName} - using original game sprites");
+                ModLogger.Debug(LogVerb.Sprite, $"Skipping copy for {spriteName} - using original game sprites");
                 return;
             }
 
@@ -753,16 +753,16 @@ namespace FFTColorCustomizer.Utilities
                 try
                 {
                     File.Copy(sourceFile, destFile, true);
-                    ModLogger.LogDebug(LogVerb.Sprite, $"Copied {colorScheme} theme to {destFile}");
+                    ModLogger.Debug(LogVerb.Sprite, $"Copied {colorScheme} theme to {destFile}");
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Sprite, $"Copying the sprite failed: {ex.Message}");
+                    ModLogger.Error(LogVerb.Sprite, $"Copying the sprite failed: {ex.Message}");
                 }
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Source sprite not found at {sourceFile}");
+                ModLogger.Warn(LogVerb.Sprite, $"Source sprite not found at {sourceFile}");
             }
         }
 
@@ -853,37 +853,37 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private void ApplyUserTheme(string spriteName, string themeName, string jobName)
         {
-            ModLogger.LogDebug(LogVerb.Sprite, $"START - sprite={spriteName}, theme={themeName}, job={jobName}");
+            ModLogger.Debug(LogVerb.Sprite, $"START - sprite={spriteName}, theme={themeName}, job={jobName}");
 
             // Get the user theme palette path
             var palettePath = _userThemeService.GetUserThemePalettePath(jobName, themeName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Palette path: {palettePath}");
+            ModLogger.Debug(LogVerb.Sprite, $"Palette path: {palettePath}");
 
             if (string.IsNullOrEmpty(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Palette path is null/empty for {jobName}/{themeName}");
+                ModLogger.Warn(LogVerb.Sprite, $"Palette path is null/empty for {jobName}/{themeName}");
                 return;
             }
 
             if (!File.Exists(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Palette file does not exist: {palettePath}");
+                ModLogger.Warn(LogVerb.Sprite, $"Palette file does not exist: {palettePath}");
                 return;
             }
 
             // Get the correct unit path for this job (WotL jobs use unit_psp)
             var unitPath = GetUnitPathForJob(jobName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
+            ModLogger.Debug(LogVerb.Sprite, $"Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
 
             // Get the original sprite
             var originalDir = Path.Combine(unitPath, "sprites_original");
             var originalFile = Path.Combine(originalDir, spriteName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Original sprite path: {originalFile}");
-            ModLogger.LogDebug(LogVerb.Sprite, $"Original sprite exists: {File.Exists(originalFile)}");
+            ModLogger.Debug(LogVerb.Sprite, $"Original sprite path: {originalFile}");
+            ModLogger.Debug(LogVerb.Sprite, $"Original sprite exists: {File.Exists(originalFile)}");
 
             if (!File.Exists(originalFile))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Original sprite not found: {originalFile}");
+                ModLogger.Warn(LogVerb.Sprite, $"Original sprite not found: {originalFile}");
                 return;
             }
 
@@ -892,12 +892,12 @@ namespace FFTColorCustomizer.Utilities
                 // Read original sprite and user palette
                 var originalSprite = File.ReadAllBytes(originalFile);
                 var userPalette = File.ReadAllBytes(palettePath);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Original sprite size: {originalSprite.Length}, Palette size: {userPalette.Length}");
+                ModLogger.Debug(LogVerb.Sprite, $"Original sprite size: {originalSprite.Length}, Palette size: {userPalette.Length}");
 
                 // Validate palette size (should be 512 bytes)
                 if (userPalette.Length != 512)
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Invalid palette size: {userPalette.Length} (expected 512)");
+                    ModLogger.Warn(LogVerb.Sprite, $"Invalid palette size: {userPalette.Length} (expected 512)");
                     return;
                 }
 
@@ -907,15 +907,15 @@ namespace FFTColorCustomizer.Utilities
                 // Write directly to base unit folder (same as regular themes)
                 // This is required because FFTPack registers files at startup and uses the base folder
                 var destFile = Path.Combine(unitPath, spriteName);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Writing to base unit folder: {destFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"Writing to base unit folder: {destFile}");
                 File.WriteAllBytes(destFile, originalSprite);
 
-                ModLogger.LogDebug(LogVerb.Sprite, $"SUCCESS - Created: {destFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"SUCCESS - Created: {destFile}");
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Sprite, $"Applying the user theme failed: {ex.Message}");
-                ModLogger.LogDebug(LogVerb.Trace, $"Stack: {ex.StackTrace}");
+                ModLogger.Error(LogVerb.Sprite, $"Applying the user theme failed: {ex.Message}");
+                ModLogger.Debug(LogVerb.Trace, $"Stack: {ex.StackTrace}");
             }
         }
 
@@ -924,21 +924,21 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private void ApplyStoryCharacterUserTheme(string spriteName, string themeName, string characterName)
         {
-            ModLogger.LogDebug(LogVerb.Sprite, $"START - sprite={spriteName}, theme={themeName}, character={characterName}");
+            ModLogger.Debug(LogVerb.Sprite, $"START - sprite={spriteName}, theme={themeName}, character={characterName}");
 
             // Get the user theme palette path (using character name as job name)
             var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
-            ModLogger.LogDebug(LogVerb.Sprite, $"Palette path: {palettePath}");
+            ModLogger.Debug(LogVerb.Sprite, $"Palette path: {palettePath}");
 
             if (string.IsNullOrEmpty(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Palette path is null/empty for {characterName}/{themeName}");
+                ModLogger.Warn(LogVerb.Sprite, $"Palette path is null/empty for {characterName}/{themeName}");
                 return;
             }
 
             if (!File.Exists(palettePath))
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Palette file does not exist: {palettePath}");
+                ModLogger.Warn(LogVerb.Sprite, $"Palette file does not exist: {palettePath}");
                 return;
             }
 
@@ -954,18 +954,18 @@ namespace FFTColorCustomizer.Utilities
             if (File.Exists(characterOriginalFile))
             {
                 originalFile = characterOriginalFile;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using character-specific original: {originalFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"Using character-specific original: {originalFile}");
             }
             else if (File.Exists(genericOriginalFile))
             {
                 originalFile = genericOriginalFile;
-                ModLogger.LogDebug(LogVerb.Sprite, $"Using generic original: {originalFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"Using generic original: {originalFile}");
             }
             else
             {
-                ModLogger.LogWarning(LogVerb.Sprite, $"Original sprite not found in either location:");
-                ModLogger.LogWarning(LogVerb.Sprite, $"Character specific original not found at {characterOriginalFile}");
-                ModLogger.LogWarning(LogVerb.Sprite, $"Generic original not found at {genericOriginalFile}");
+                ModLogger.Warn(LogVerb.Sprite, $"Original sprite not found in either location:");
+                ModLogger.Warn(LogVerb.Sprite, $"Character specific original not found at {characterOriginalFile}");
+                ModLogger.Warn(LogVerb.Sprite, $"Generic original not found at {genericOriginalFile}");
                 return;
             }
 
@@ -974,12 +974,12 @@ namespace FFTColorCustomizer.Utilities
                 // Read original sprite and user palette
                 var originalSprite = File.ReadAllBytes(originalFile);
                 var userPalette = File.ReadAllBytes(palettePath);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Story character original sprite size: {originalSprite.Length}, palette size: {userPalette.Length}");
+                ModLogger.Debug(LogVerb.Sprite, $"Story character original sprite size: {originalSprite.Length}, palette size: {userPalette.Length}");
 
                 // Validate palette size (should be 512 bytes)
                 if (userPalette.Length != 512)
                 {
-                    ModLogger.LogWarning(LogVerb.Sprite, $"Invalid story character palette size: {userPalette.Length} (expected 512)");
+                    ModLogger.Warn(LogVerb.Sprite, $"Invalid story character palette size: {userPalette.Length} (expected 512)");
                     return;
                 }
 
@@ -988,10 +988,10 @@ namespace FFTColorCustomizer.Utilities
 
                 // Write directly to base unit folder (same as regular themes)
                 var destFile = Path.Combine(_unitPath, spriteName);
-                ModLogger.LogDebug(LogVerb.Sprite, $"Writing to base unit folder: {destFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"Writing to base unit folder: {destFile}");
                 File.WriteAllBytes(destFile, originalSprite);
 
-                ModLogger.LogDebug(LogVerb.Sprite, $"SUCCESS - Created: {destFile}");
+                ModLogger.Debug(LogVerb.Sprite, $"SUCCESS - Created: {destFile}");
 
                 // For Ramza chapters, also patch the NXD with the user theme palette
                 if (IsRamzaChapter(characterName))
@@ -1001,8 +1001,8 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Sprite, $"Applying the user theme failed: {ex.Message}");
-                ModLogger.LogDebug(LogVerb.Trace, $"Stack: {ex.StackTrace}");
+                ModLogger.Error(LogVerb.Sprite, $"Applying the user theme failed: {ex.Message}");
+                ModLogger.Debug(LogVerb.Trace, $"Stack: {ex.StackTrace}");
             }
         }
 
@@ -1036,7 +1036,7 @@ namespace FFTColorCustomizer.Utilities
                 var ch23Theme = config?.RamzaChapter23 ?? "original";
                 var ch4Theme = config?.RamzaChapter4 ?? "original";
 
-                ModLogger.LogDebug(LogVerb.Ramza, $"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+                ModLogger.Debug(LogVerb.Ramza, $"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
                 var builtInPalettes = new RamzaBuiltInThemePalettes();
                 var themeSaver = new RamzaThemeSaver();
@@ -1049,16 +1049,16 @@ namespace FFTColorCustomizer.Utilities
 
                 if (success)
                 {
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Successfully patched charclut.nxd with per-chapter themes");
+                    ModLogger.Debug(LogVerb.Ramza, $"Successfully patched charclut.nxd with per-chapter themes");
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Ramza, $"Failed to patch charclut.nxd");
+                    ModLogger.Warn(LogVerb.Ramza, $"Failed to patch charclut.nxd");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Ramza, $"Error applying themes: {ex.Message}");
+                ModLogger.Error(LogVerb.Ramza, $"Error applying themes: {ex.Message}");
             }
         }
 
@@ -1070,7 +1070,7 @@ namespace FFTColorCustomizer.Utilities
         {
             try
             {
-                ModLogger.LogDebug(LogVerb.Ramza, $"Applying built-in theme '{themeName}' for {characterName}");
+                ModLogger.Debug(LogVerb.Ramza, $"Applying built-in theme '{themeName}' for {characterName}");
 
                 var builtInPalettes = new RamzaBuiltInThemePalettes();
                 var themeSaver = new RamzaThemeSaver();
@@ -1088,32 +1088,32 @@ namespace FFTColorCustomizer.Utilities
                 var clutData = builtInPalettes.GetThemePalette(themeName.ToLower(), chapter);
                 if (clutData == null)
                 {
-                    ModLogger.LogWarning(LogVerb.Ramza, $"No palette found for {themeName}/{chapter}");
+                    ModLogger.Warn(LogVerb.Ramza, $"No palette found for {themeName}/{chapter}");
                     return;
                 }
 
                 // Log the armor colors being applied (indices 3-6)
-                ModLogger.LogDebug(LogVerb.Ramza, $"Armor colors for {themeName}/Ch{chapter}:");
+                ModLogger.Debug(LogVerb.Ramza, $"Armor colors for {themeName}/Ch{chapter}:");
                 for (int i = 3; i <= 6; i++)
                 {
                     int offset = i * 3;
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Index {i}: RGB({clutData[offset]}, {clutData[offset + 1]}, {clutData[offset + 2]})");
+                    ModLogger.Debug(LogVerb.Ramza, $"Index {i}: RGB({clutData[offset]}, {clutData[offset + 1]}, {clutData[offset + 2]})");
                 }
 
                 var success = themeSaver.ApplyClutData(chapter, clutData, _modPath);
 
                 if (success)
                 {
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Successfully patched charclut.nxd for {characterName}/{themeName}");
+                    ModLogger.Debug(LogVerb.Ramza, $"Successfully patched charclut.nxd for {characterName}/{themeName}");
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Ramza, $"Failed to patch charclut.nxd for {characterName}/{themeName}");
+                    ModLogger.Warn(LogVerb.Ramza, $"Failed to patch charclut.nxd for {characterName}/{themeName}");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Ramza, $"Error applying built-in theme: {ex.Message}");
+                ModLogger.Error(LogVerb.Ramza, $"Error applying built-in theme: {ex.Message}");
             }
         }
 
@@ -1124,7 +1124,7 @@ namespace FFTColorCustomizer.Utilities
         {
             try
             {
-                ModLogger.LogDebug(LogVerb.Ramza, $"Applying user theme NXD palette for {characterName}");
+                ModLogger.Debug(LogVerb.Ramza, $"Applying user theme NXD palette for {characterName}");
 
                 var themeSaver = new RamzaThemeSaver();
 
@@ -1143,16 +1143,16 @@ namespace FFTColorCustomizer.Utilities
 
                 if (success)
                 {
-                    ModLogger.LogDebug(LogVerb.Ramza, $"Successfully patched charclut.nxd for {characterName}");
+                    ModLogger.Debug(LogVerb.Ramza, $"Successfully patched charclut.nxd for {characterName}");
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Ramza, $"Failed to patch charclut.nxd for {characterName}");
+                    ModLogger.Warn(LogVerb.Ramza, $"Failed to patch charclut.nxd for {characterName}");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError(LogVerb.Ramza, $"Error patching NXD: {ex.Message}");
+                ModLogger.Error(LogVerb.Ramza, $"Error patching NXD: {ex.Message}");
             }
         }
     }

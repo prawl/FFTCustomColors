@@ -5,15 +5,15 @@
 # Adapted from FFTHandsFree's fft.sh — minimal version that gives us:
 #   running   — is FFT_enhanced.exe alive right now?
 #   restart   — kill game, build+deploy, relaunch, press F1 to open the config UI
-#   logs      — tail/grep the mod's live_log.txt (written by ConsoleLogger)
+#   logs      — tail/grep the mod's live_log.log (written by the shared logger)
 #   kill_fft  — just kill the game + Reloaded II processes
 #
 # Paths assume the standard Steam install layout.
 # =============================================================================
 
 FFT_GAME_DIR="/c/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles"
-FFT_MOD_DIR="$FFT_GAME_DIR/Reloaded/Mods/FFTColorCustomizer"
-FFT_LIVE_LOG="$FFT_MOD_DIR/logs/live_log.txt"
+FFT_MOD_DIR="$FFT_GAME_DIR/Reloaded/Mods/paxtrick.fft.colorcustomizer"
+FFT_LIVE_LOG="$FFT_MOD_DIR/logs/live_log.log"
 FFT_RELOADED_EXE="$FFT_GAME_DIR/Reloaded/Reloaded-II.exe"
 FFT_GAME_EXE_BASENAME="FFT_enhanced.exe"
 
@@ -41,13 +41,13 @@ kill_fft() {
   echo "[kill_fft] done"
 }
 
-# logs: tail the mod's live_log.txt (truncated fresh on each game launch).
+# logs: tail the mod's live_log.log (rotated to live_log.prev.log on each game launch).
 # Usage: logs            — last 40 lines
 #        logs 100        — last 100 lines
 #        logs grep foo   — grep all logs for 'foo' (extended regex)
 logs() {
   if [ ! -f "$FFT_LIVE_LOG" ]; then
-    echo "[logs] no live_log.txt yet at: $FFT_LIVE_LOG"
+    echo "[logs] no live_log.log yet at: $FFT_LIVE_LOG"
     echo "[logs] launch the game (boot/restart) to produce one"
     return 1
   fi

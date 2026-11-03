@@ -1,23 +1,16 @@
 using System.Runtime.CompilerServices;
-using FFTColorCustomizer.Core;
-using FFTColorCustomizer.Utilities;
+using ModGates.Logging;
+using Xunit;
+
+// ModLogger.Instance is one process wide static, so a parallel class could swap it mid assertion.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace FFTColorCustomizer.Tests.Helpers
 {
-    /// <summary>
-    /// Assembly-wide test default for the static ModLogger, the lesson imported from the
-    /// sibling mods' port: xUnit runs test classes in parallel, and any class left writing
-    /// through the shared ModLogger.Instance sprays other classes' production logging into
-    /// whatever logger a test installed (a CI-only red in the sibling repo). Defaulting the
-    /// whole assembly to NullLogger means a test only sees logging it explicitly wired, and
-    /// any test that installs a capture logger must lock its writes and assert on snapshots.
-    /// </summary>
+    /// <summary>Runs once when the test assembly loads and swaps in the logger that swallows everything.</summary>
     internal static class LoggingTestDefaults
     {
         [ModuleInitializer]
-        internal static void UseNullLoggerForTheWholeTestRun()
-        {
-            ModLogger.Instance = NullLogger.Instance;
-        }
+        internal static void UseNullLoggerForTheWholeTestRun() => ModLogger.UseNullLogger();
     }
 }

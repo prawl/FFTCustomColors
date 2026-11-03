@@ -84,12 +84,12 @@ namespace FFTColorCustomizer.Configuration
             _configPath = configPath;
             _modPath = modPath;
 
-            ModLogger.LogDebug(LogVerb.Ui, $"ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
+            ModLogger.Debug(LogVerb.Ui, $"ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
             if (!string.IsNullOrEmpty(configPath))
-                ModLogger.LogDebug(LogVerb.Ui, $"Config path set to: {configPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Config path set to: {configPath}");
             if (!string.IsNullOrEmpty(modPath))
             {
-                ModLogger.LogDebug(LogVerb.Ui, $"Mod path set to: {modPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Mod path set to: {modPath}");
                 // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
                 Services.CharacterServiceSingleton.SetModPath(modPath);
                 // Also initialize JobClassServiceSingleton with the mod path
@@ -111,11 +111,11 @@ namespace FFTColorCustomizer.Configuration
             this.Shown += (s, e) =>
             {
                 _isFullyLoaded = true;
-                ModLogger.LogDebug(LogVerb.Ui, $"Form shown - events now enabled");
+                ModLogger.Debug(LogVerb.Ui, $"Form shown - events now enabled");
                 VerifyAllSelections();
             };
 
-            ModLogger.LogDebug(LogVerb.Ui, $"ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Debug(LogVerb.Ui, $"ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
         }
 
         private void InitializeForm()
@@ -137,11 +137,11 @@ namespace FFTColorCustomizer.Configuration
         {
             if (_contentPanel == null || _rowBuilder == null)
             {
-                ModLogger.LogDebug(LogVerb.Ui, "Skipping lazy loading initialization - controls not ready");
+                ModLogger.Debug(LogVerb.Ui, "Skipping lazy loading initialization - controls not ready");
                 return;
             }
 
-            ModLogger.LogDebug(LogVerb.Ui, $"Initializing lazy loading for {_rowBuilder.AllCarousels.Count} carousels");
+            ModLogger.Debug(LogVerb.Ui, $"Initializing lazy loading for {_rowBuilder.AllCarousels.Count} carousels");
 
             // Create lazy loading manager with the scrollable content panel
             // Load more items initially to ensure both generic and story characters are covered
@@ -163,7 +163,7 @@ namespace FFTColorCustomizer.Configuration
                 _lazyLoadingManager.CheckAllCarouselsVisibility();
             }));
 
-            ModLogger.LogDebug(LogVerb.Ui, "Lazy loading initialization complete");
+            ModLogger.Debug(LogVerb.Ui, "Lazy loading initialization complete");
         }
 
         private void InitializePreviewManager()
@@ -173,19 +173,19 @@ namespace FFTColorCustomizer.Configuration
             if (!string.IsNullOrEmpty(_modPath))
             {
                 modPath = _modPath;
-                ModLogger.LogDebug(LogVerb.Ui, $"Using explicitly provided mod path: {modPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Using explicitly provided mod path: {modPath}");
             }
             else if (!string.IsNullOrEmpty(_configPath))
             {
                 var configDir = Path.GetDirectoryName(_configPath);
                 modPath = Path.GetDirectoryName(configDir) ?? Environment.CurrentDirectory;
-                ModLogger.LogDebug(LogVerb.Ui, $"Derived mod path from config path: {modPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Derived mod path from config path: {modPath}");
             }
             else
             {
                 modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
                     ?? Environment.CurrentDirectory;
-                ModLogger.LogDebug(LogVerb.Ui, $"Using assembly location as mod path: {modPath}");
+                ModLogger.Debug(LogVerb.Ui, $"Using assembly location as mod path: {modPath}");
             }
 
             _previewManager = new PreviewImageManager(modPath);
@@ -412,7 +412,7 @@ namespace FFTColorCustomizer.Configuration
         {
             // This would normally update the preview image based on the selection
             // Implementation details depend on the specific preview system
-            ModLogger.LogDebug(LogVerb.Ui, $"Refreshing preview for {tag.JobName}");
+            ModLogger.Debug(LogVerb.Ui, $"Refreshing preview for {tag.JobName}");
         }
 
         /// <summary>
@@ -461,8 +461,8 @@ namespace FFTColorCustomizer.Configuration
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Save button clicked");
-            ModLogger.LogDebug(LogVerb.Ui, $"Current config state - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Debug(LogVerb.Ui, $"Save button clicked");
+            ModLogger.Debug(LogVerb.Ui, $"Current config state - Squire_Male: {_config.Squire_Male}");
 
             DialogResult = DialogResult.OK;
             Close();
@@ -481,7 +481,7 @@ namespace FFTColorCustomizer.Configuration
                 ResetAllCharacters();
                 ReloadForm();
 
-                ModLogger.Log(LogVerb.Ui, "All themes reset to original");
+                ModLogger.Event(LogVerb.Ui, "All themes reset to original");
 
                 // Auto-save the reset configuration
                 DialogResult = DialogResult.OK;
@@ -581,7 +581,7 @@ namespace FFTColorCustomizer.Configuration
 
             // Also output to console/debug
             System.Diagnostics.Debug.WriteLine(debugInfo.ToString());
-            ModLogger.LogDebug(LogVerb.Ui, debugInfo.ToString());
+            ModLogger.Debug(LogVerb.Ui, debugInfo.ToString());
         }
     }
 }

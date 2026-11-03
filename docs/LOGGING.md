@@ -1,8 +1,8 @@
 # Logging (the runtime contract)
 
-STATUS: CONTRACT (machine-checked by Tests/Utilities/LogContractTests.cs; the verb table below
-and the LogVerb enum are pinned to each other, so changing the glossary means changing both
-together)
+STATUS: CONTRACT (machine-checked by the shared LogContractTests under gates/Tests; the verb
+table below and the LogVerb enum are pinned to each other, so changing the glossary means
+changing both together)
 
 The logging model ported from the sibling FFT mods (CC-2), adapted to this mod's domain: theme
 verbs instead of battle verbs, apply passes instead of battle edges. The goal is that a Nexus
@@ -16,18 +16,18 @@ Every line is one of:
     [Color Customizer] [HH:mm:ss.fff] [LEVEL] [verb] message     (the FILE, always)
     [Color Customizer] [HH:mm:ss.fff] [LEVEL] message            (the CONSOLE at Info)
 
-- **Two-sink rule:** the file (logs/live_log.txt) gets every line, Debug included,
+- **Two-sink rule:** the file (logs/live_log.log) gets every line, Debug included,
   unconditionally; the console shows a line only at or above the configured level. The
   evidence chain is never thinner than the console.
-- **Rotation, not truncation:** live_log.txt rotates to live_log.prev.txt at launch, so the
-  previous run survives. The name stays live_log.txt: the fft-dev helpers and every existing
-  habit keep working.
+- **Rotation, not truncation:** live_log.log rotates to live_log.prev.log at launch, so the
+  previous run survives. The stem stays live_log; the fft-dev helpers follow the .log suffix
+  the shared logger writes.
 - **Verb rendering split:** the file line always carries the verb bracket. The console drops
   it at Info tier only (subject-first prose a player reads); Warning and Error console lines
   keep it, and so does a Debug line on a console raised to Debug.
 - **Console dedup:** a repeated (level, verb, message) identity prints once per apply pass;
-  ModLogger.NoteApplyPassEdge() resets the seen-set at apply-pass edges. The file is never
-  deduped.
+  ModLogger.NoteBattleEdge() resets the seen-set at apply-pass edges, the shared logger's name
+  for the edge, and nothing calls it yet. The file is never deduped.
 - **Two-line id pattern:** file paths, byte counts, and ids ride a [trace] Debug companion
   line, never the console sentence.
 - **User-initiated vs background:** work the player caused speaks at Info; background
@@ -39,7 +39,8 @@ Every line is one of:
 
 ## The verb glossary (closed set, 9 verbs)
 
-Pinned one-for-one against the LogVerb enum (ColorMod/Core/LogVerb.cs) by LogContractTests.
+Pinned one-for-one against the LogVerb enum (ColorMod/Core/LogVerb.cs, the one logger file this
+mod supplies) by the shared LogContractTests.
 The set is CLOSED: a new subsystem reuses one of these verbs, or this table is amended
 deliberately together with the enum. The sibling mods' battle verbs do not exist here.
 
@@ -65,12 +66,11 @@ deliberately together with the enum. The sibling mods' battle verbs do not exist
 - PASS/FAIL style capitalized tokens are not used in runtime lines; they belong to the build
   pipeline's voice.
 
-## Migration state (the staged plan from the CC-2 proposal)
+## The logger itself
 
-The legacy untyped ModLogger entry points (Log/LogWarning/LogError/LogDebug without a verb)
-stay alive while the call sites migrate sweep by sweep; legacy lines render with timestamp
-and level but no verb bracket. Raw Console.WriteLine stragglers are pinned by a shrinking
-per-file allowlist in LogContractTests: a file cleaned in a sweep leaves the allowlist and
-can never regress. When the allowlist hits zero the legacy entry points go private and the
-contract turns fully strict (stage 6), and the flight recorder port follows (stage 7, the
-CC-3 decision: flush on apply-pass edges and on the first Error of a launch).
+The logger is the shared rulebook's (gates/Logging), compiled into the mod as linked source:
+ModLogger is the facade (Event, Warn, Error, Debug, each with a verb first), FileConsoleLogger
+the two sinks, LogVerb.cs the one file this mod supplies. The legacy bare entry points are
+gone, every call site names its verb, and the console threshold is Info, so launch and
+re-apply chatter lives in the file alone. The flight recorder port (CC-3) stays a separate
+card.

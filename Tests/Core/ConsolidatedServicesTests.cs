@@ -191,9 +191,7 @@ namespace FFTColorCustomizer.Tests.Core
         public void SpriteService_ShouldCopySprites()
         {
             // Arrange
-            var spriteService = new SpriteService(
-                _container.Resolve<IPathResolver>(),
-                _container.Resolve<ILogger>());
+            var spriteService = new SpriteService(_container.Resolve<IPathResolver>());
 
             // Act & Assert - Should not throw
             spriteService.CopySprites("original", "Knight");
@@ -204,7 +202,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Arrange
             var pathResolver = _container.Resolve<IPathResolver>();
-            var spriteService = new SpriteService(pathResolver, _container.Resolve<ILogger>());
+            var spriteService = new SpriteService(pathResolver);
 
             // Create a test sprite file
             var spritePath = Path.Combine(_testPath, "test_sprite.bmp");
@@ -221,9 +219,7 @@ namespace FFTColorCustomizer.Tests.Core
         public void SpriteService_ShouldApplySpriteConfiguration()
         {
             // Arrange
-            var spriteService = new SpriteService(
-                _container.Resolve<IPathResolver>(),
-                _container.Resolve<ILogger>());
+            var spriteService = new SpriteService(_container.Resolve<IPathResolver>());
 
             var config = new Config
             {
@@ -245,7 +241,7 @@ namespace FFTColorCustomizer.Tests.Core
             var pathResolver = _container.Resolve<IPathResolver>();
             var configService = new ConfigurationService(pathResolver);
             var themeService = new ThemeService(pathResolver, configService);
-            var spriteService = new SpriteService(pathResolver, _container.Resolve<ILogger>());
+            var spriteService = new SpriteService(pathResolver);
 
             // Act
             var config = configService.LoadConfig();

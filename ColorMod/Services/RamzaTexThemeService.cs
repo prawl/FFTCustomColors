@@ -51,21 +51,21 @@ namespace FFTColorCustomizer.Services
                         int changes = _texModifier.ModifyTexColors(inputFile, outputFile, themeName);
                         totalChanges += changes;
                         successCount++;
-                        ModLogger.LogDebug(LogVerb.Ramza, $"Applied {themeName} to tex_{texNumber}.bin ({changes} color changes)");
+                        ModLogger.Debug(LogVerb.Ramza, $"Applied {themeName} to tex_{texNumber}.bin ({changes} color changes)");
                     }
                     catch (Exception ex)
                     {
-                        ModLogger.LogError(LogVerb.Ramza, $"Failed to process tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.Error(LogVerb.Ramza, $"Failed to process tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
                 else
                 {
-                    ModLogger.LogWarning(LogVerb.Ramza, $"The backup of tex_{texNumber}.bin was not found");
+                    ModLogger.Warn(LogVerb.Ramza, $"The backup of tex_{texNumber}.bin was not found");
                 }
             }
 
-            ModLogger.Log(LogVerb.Ramza, $"Theme {themeName} applied to {successCount}/{_ramzaTexNumbers.Length} Ramza tex files");
-            ModLogger.LogDebug(LogVerb.Ramza, $"Total color modifications: {totalChanges}");
+            ModLogger.Event(LogVerb.Ramza, $"Theme {themeName} applied to {successCount}/{_ramzaTexNumbers.Length} Ramza tex files");
+            ModLogger.Debug(LogVerb.Ramza, $"Total color modifications: {totalChanges}");
         }
 
         /// <summary>
@@ -94,16 +94,16 @@ namespace FFTColorCustomizer.Services
                     {
                         File.Copy(sourceFile, destFile, overwrite: true);
                         restoredCount++;
-                        ModLogger.LogDebug(LogVerb.Ramza, $"Restored original tex_{texNumber}.bin");
+                        ModLogger.Debug(LogVerb.Ramza, $"Restored original tex_{texNumber}.bin");
                     }
                     catch (Exception ex)
                     {
-                        ModLogger.LogError(LogVerb.Ramza, $"Failed to restore tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.Error(LogVerb.Ramza, $"Failed to restore tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
             }
 
-            ModLogger.Log(LogVerb.Ramza, $"Restored {restoredCount}/{_ramzaTexNumbers.Length} original Ramza tex files");
+            ModLogger.Event(LogVerb.Ramza, $"Restored {restoredCount}/{_ramzaTexNumbers.Length} original Ramza tex files");
         }
 
         /// <summary>
@@ -148,18 +148,18 @@ namespace FFTColorCustomizer.Services
                     {
                         File.Copy(sourceFile, backupFile);
                         backedUpCount++;
-                        ModLogger.LogDebug(LogVerb.Ramza, $"Backed up tex_{texNumber}.bin");
+                        ModLogger.Debug(LogVerb.Ramza, $"Backed up tex_{texNumber}.bin");
                     }
                     catch (Exception ex)
                     {
-                        ModLogger.LogError(LogVerb.Ramza, $"Failed to backup tex_{texNumber}.bin: {ex.Message}");
+                        ModLogger.Error(LogVerb.Ramza, $"Failed to backup tex_{texNumber}.bin: {ex.Message}");
                     }
                 }
             }
 
             if (backedUpCount > 0)
             {
-                ModLogger.LogDebug(LogVerb.Ramza, $"Created backup of {backedUpCount} tex files");
+                ModLogger.Debug(LogVerb.Ramza, $"Created backup of {backedUpCount} tex files");
             }
         }
     }

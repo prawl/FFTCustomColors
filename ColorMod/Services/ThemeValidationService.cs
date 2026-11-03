@@ -177,26 +177,26 @@ namespace FFTColorCustomizer.Services
         {
             if (_validationResults.Count == 0)
             {
-                ModLogger.LogDebug(LogVerb.Theme, "No theme validation results to report.");
+                ModLogger.Debug(LogVerb.Theme, "No theme validation results to report.");
                 return;
             }
 
-            ModLogger.LogDebug(LogVerb.Theme, "Theme validation results follow");
+            ModLogger.Debug(LogVerb.Theme, "Theme validation results follow");
 
             var missingThemes = _validationResults.Where(r => !r.Exists).ToList();
             var foundThemes = _validationResults.Where(r => r.Exists).ToList();
 
             if (missingThemes.Any())
             {
-                ModLogger.LogWarning(LogVerb.Theme, $"Found {missingThemes.Count} missing theme files:");
+                ModLogger.Warn(LogVerb.Theme, $"Found {missingThemes.Count} missing theme files:");
                 foreach (var result in missingThemes)
                 {
-                    ModLogger.LogWarning(LogVerb.Theme, $"Missing theme file for {result.CharacterName}, theme {result.ThemeName} ({result.SpriteName})");
-                    ModLogger.LogWarning(LogVerb.Theme, $"Expected at {result.ExpectedPath}");
+                    ModLogger.Warn(LogVerb.Theme, $"Missing theme file for {result.CharacterName}, theme {result.ThemeName} ({result.SpriteName})");
+                    ModLogger.Warn(LogVerb.Theme, $"Expected at {result.ExpectedPath}");
                 }
             }
 
-            ModLogger.LogDebug(LogVerb.Theme, $"Validated {foundThemes.Count} theme files successfully");
+            ModLogger.Debug(LogVerb.Theme, $"Validated {foundThemes.Count} theme files successfully");
         }
 
         /// <summary>

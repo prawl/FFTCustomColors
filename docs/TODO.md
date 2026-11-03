@@ -11,7 +11,7 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [BUILDING]
+- **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [AWAITING-LIVE]
   - Done means: every line the mod prints says what kind of event it is and when it happened,
     the log file keeps the previous run instead of erasing it at launch, and the console stays
     quiet unless the player caused something or something went wrong. (Tech: typed ModLogger
@@ -34,8 +34,18 @@ that checklist.
     The two sink core already shipped (stages 1 and 2, v3.1.2); the quieting he is asking for
     is exactly the remaining conversion sweeps plus the strictness flip, so finishing stages
     3 to 6 is the fix and the console noise is the acceptance test.
+  - Built 2026-11-03, stages 3 to 6: every log call names its verb, launch and re-apply chatter
+    is Debug, the mod runs the shared rulebook logger, and the file is logs/live_log.log with
+    live_log.prev.log kept from the run before. Awaiting the owner's live pass: a console that
+    only shows what the player caused, and the previous run still on disk after a relaunch.
 
 ## Backlog
+
+- [CC-50] 2026-11-03: Wanted to bend the duplication floor for the logger swap, because deleting
+  the five local logger files (about 400 lines of code nothing else repeats) raised the share of
+  code in repeated blocks from 3.13% to 3.19% without adding one repeated line; a ratio punishes
+  deletion. (Tech: health.py ratchets duplication as a share of all code rows and the repeated
+  rows themselves did not change; the fix belongs in the rulebook, a count instead of a share.)
 
 - [CC-48] 2026-11-02: Check that the theme files the mod writes come out byte for byte right, so
   a change that breaks a palette fails the build instead of reaching a player. Add golden file

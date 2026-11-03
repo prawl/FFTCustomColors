@@ -61,7 +61,7 @@ namespace FFTColorCustomizer.Configuration.UI
         /// </summary>
         public void Initialize()
         {
-            ModLogger.LogDebug(LogVerb.Ui, $"Initializing LazyLoadingManager with {_carousels.Count} carousels, immediate load: {_maxImmediateLoad}");
+            ModLogger.Debug(LogVerb.Ui, $"Initializing LazyLoadingManager with {_carousels.Count} carousels, immediate load: {_maxImmediateLoad}");
 
             for (int i = 0; i < _carousels.Count; i++)
             {
@@ -71,7 +71,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Load the first N immediately
                 if (carousel.ShouldLoadImmediately && _loaders.TryGetValue(carousel, out var loader))
                 {
-                    ModLogger.LogDebug(LogVerb.Ui, $"Loading carousel {i} immediately");
+                    ModLogger.Debug(LogVerb.Ui, $"Loading carousel {i} immediately");
                     loader.LoadImmediately();
                 }
             }

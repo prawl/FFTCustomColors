@@ -51,7 +51,7 @@ namespace FFTColorCustomizer.Core
             // Register core services
             // The injected ILogger shares the process-wide two-sink logger (ModLogger.Instance)
             // so injected consumers and static call sites write into the same evidence chain.
-            container.RegisterSingleton<ILogger>(() => Utilities.ModLogger.Instance);
+            container.RegisterSingleton<ILogger>(() => ModLogger.Instance);
             container.RegisterSingleton<IPathResolver>(() => new PathResolver(actualModPath, sourcePath, userConfigPath));
 
             // Register configuration services

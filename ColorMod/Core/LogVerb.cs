@@ -1,6 +1,6 @@
 using System;
 
-namespace FFTColorCustomizer.Core
+namespace ModGates.Logging
 {
     /// <summary>
     /// The closed verb glossary every log line carries, theme verbs instead of battle verbs.
@@ -9,7 +9,7 @@ namespace FFTColorCustomizer.Core
     /// two in lockstep. The set is CLOSED, a new subsystem reuses one of these verbs, or the
     /// doc gets amended first; no ad-hoc per-module prefixes.
     /// </summary>
-    public enum LogVerb
+    internal enum LogVerb
     {
         Startup,
         Config,
@@ -24,7 +24,7 @@ namespace FFTColorCustomizer.Core
 
     /// <summary>Enum member to the literal lowercase bracket token rendered in log lines and
     /// committed in docs/LOGGING.md's verb table.</summary>
-    public static class LogVerbToken
+    internal static class LogVerbToken
     {
         public static string Token(this LogVerb verb) => verb switch
         {

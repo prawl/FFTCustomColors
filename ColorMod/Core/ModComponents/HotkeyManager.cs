@@ -37,7 +37,7 @@ namespace FFTColorCustomizer.Core.ModComponents
         /// </summary>
         public void ProcessHotkeyPress(int vkCode)
         {
-            ModLogger.LogDebug(LogVerb.Startup, $"ProcessHotkeyPress: vkCode={vkCode:X}");
+            ModLogger.Debug(LogVerb.Startup, $"ProcessHotkeyPress: vkCode={vkCode:X}");
 
             if (_hotkeyActions.TryGetValue(vkCode, out var action))
             {
@@ -47,12 +47,12 @@ namespace FFTColorCustomizer.Core.ModComponents
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError(LogVerb.Startup, $"Error processing hotkey {vkCode:X}: {ex.Message}");
+                    ModLogger.Error(LogVerb.Startup, $"Error processing hotkey {vkCode:X}: {ex.Message}");
                 }
             }
             else
             {
-                ModLogger.LogDebug(LogVerb.Startup, $"No action registered for vkCode {vkCode:X}");
+                ModLogger.Debug(LogVerb.Startup, $"No action registered for vkCode {vkCode:X}");
             }
         }
 

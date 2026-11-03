@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="ModGates.Logging" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,11 +47,10 @@
     <Compile Remove="tools\**" />
   </ItemGroup>
 
-  <!-- The shared contract tests, linked by name. The log and logger tests stay out until the
-       logging rework moves this mod onto the shared logger. -->
+  <!-- The shared contract and logger tests. -->
   <ItemGroup>
     <Compile Remove="gates\**" />
-    <Compile Include="gates\Tests\RepoRoot.cs;gates\Tests\Rules.cs;gates\Tests\Ledger.cs;gates\Tests\LogScan.cs;gates\Tests\FileRows.cs;gates\Tests\TodoContractTests.cs;gates\Tests\StyleContractTests.cs;gates\Tests\CommentContractTests.cs;gates\Tests\CommentBudgetContractTests.cs;gates\Tests\SilentCatchContractTests.cs;gates\Tests\ImageLiteralContractTests.cs;gates\Tests\HealthReportWiringContractTests.cs" Link="Gates\Tests\%(Filename)%(Extension)" />
+    <Compile Include="gates\Tests\**\*.cs" Link="Gates\Tests\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
