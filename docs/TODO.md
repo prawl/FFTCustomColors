@@ -11,18 +11,6 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-47] Take the shared rulebook so this mod builds under the same rules as the others** (opened 2026-11-02) [BUILDING]
-  - Done means: the mod carries gates/ as a subtree with its rules.json, compiles the shared
-    tests in, imports the shared build settings and style file, and every gate runs green
-    locally and in CI with today's numbers recorded as the floor. The shared logger waits for
-    CC-2, since that card's conversion sweep is the swap. No gameplay code changes. (Tech: the
-    hookup steps in gates/README.md; rules.json names prod, tests, projects and the CC prefix;
-    floor.json, files.json and style.json come from today's files; the nullable warnings stay
-    warnings under the rulebook's warning ratchet.)
-  - Verify: BuildLinked.ps1 and CI green on the hookup commit; the build log names the rulebook
-    version; the shared contract tests replace the local ledger test and go red on a planted
-    offence.
-
 - **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [BUILDING]
   - Done means: every line the mod prints says what kind of event it is and when it happened,
     the log file keeps the previous run instead of erasing it at launch, and the console stays

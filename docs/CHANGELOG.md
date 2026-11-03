@@ -8,6 +8,16 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-47] SHIPPED 379c1a12 2026-11-03: the mod builds under the same rules as the other FFT
+  mods. Every dev build and release package now runs the shared rulebook's gates first
+  (fingerprint, formatting, tests, code health, temp leftovers), the comments follow the shared
+  rules, and the day's numbers are the line in the sand that can only improve. Nothing a player
+  sees changed. Pushed with the owner's yes; CI run 41598147799 is green on 1ac5d82f, the merge
+  that landed it. (Tech: gates/ subtree at v0.1.2 after the v0.1.1 hookup, rules.json, twelve
+  shared contract tests linked by name, Directory.Build.targets with ModGatesWarningsAsErrors
+  false under the rulebook's new warning ratchet at 262, floor.json, files.json, style.json
+  and warnings.json recorded; the shared logger waits for CC-2.)
+
 - [CC-46] SHIPPED 488815fe 2026-08-24: monsters walk too. The Animate checkbox now works for
   all seventeen characters it used to grey out (the fifteen monster families, the Chocobo and
   Construct 8): each plays the same walk the game shows, at the game's own uneven timing, and
