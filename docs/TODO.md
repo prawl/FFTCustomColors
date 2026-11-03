@@ -23,6 +23,30 @@ that checklist.
     version; the shared contract tests replace the local ledger test and go red on a planted
     offence.
 
+- **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [BUILDING]
+  - Done means: every line the mod prints says what kind of event it is and when it happened,
+    the log file keeps the previous run instead of erasing it at launch, and the console stays
+    quiet unless the player caused something or something went wrong. (Tech: typed ModLogger
+    facade over a two-sink FileConsoleLogger, closed 9-verb glossary, live_log.txt with .prev
+    rotation, docs/LOGGING.md pinned by LogContractTests, staged commits per the proposal
+    artifact: facade core, contract tests, three conversion sweeps, strictness flip, flight
+    recorder riders CC-3 and CC-14.)
+  - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
+    drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
+    shape with live_log.prev.txt preserved from the prior run.
+  - The shared rulebook's logger is the target since 2026-11-03: the sweep rewrites every call
+    to the verb first facade, so finishing it against gates/Logging/ModLogger and deleting the
+    local logger, LogContractTests and FileConsoleLoggerTests is the swap.
+  - Stages 1 and 2 live-verified 2026-07-21 on an owner-driven double launch: the new line
+    shape (timestamps, levels, tag) confirmed in-game, and the second launch preserved the
+    whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
+    fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
+    Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
+  - Owner re-raised 2026-08-24: the console still prints far too many unnecessary info lines.
+    The two sink core already shipped (stages 1 and 2, v3.1.2); the quieting he is asking for
+    is exactly the remaining conversion sweeps plus the strictness flip, so finishing stages
+    3 to 6 is the fix and the console noise is the acceptance test.
+
 ## Backlog
 
 - [CC-48] 2026-11-02: Check that the theme files the mod writes come out byte for byte right, so
@@ -69,30 +93,6 @@ that checklist.
     exact DllNotFoundException users hit) and green on the fixed zip; owner installed the
     fixed zip as a user and saved a new Ramza theme with no SQLite error. Remaining on this
     row: CC-12/CC-13 fixes and the Nexus outreach plus release.
-
-- [CC-2] 2026-07-21: Rework logging to the sibling mods' model. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
-  - Done means: every line the mod prints says what kind of event it is and when it happened,
-    the log file keeps the previous run instead of erasing it at launch, and the console stays
-    quiet unless the player caused something or something went wrong. (Tech: typed ModLogger
-    facade over a two-sink FileConsoleLogger, closed 9-verb glossary, live_log.txt with .prev
-    rotation, docs/LOGGING.md pinned by LogContractTests, staged commits per the proposal
-    artifact: facade core, contract tests, three conversion sweeps, strictness flip, flight
-    recorder riders CC-3 and CC-14.)
-  - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
-    drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
-    shape with live_log.prev.txt preserved from the prior run.
-  - The shared rulebook's logger is the target since 2026-11-03: the sweep rewrites every call
-    to the verb first facade, so finishing it against gates/Logging/ModLogger and deleting the
-    local logger, LogContractTests and FileConsoleLoggerTests is the swap.
-  - Stages 1 and 2 live-verified 2026-07-21 on an owner-driven double launch: the new line
-    shape (timestamps, levels, tag) confirmed in-game, and the second launch preserved the
-    whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
-    fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
-    Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
-  - Owner re-raised 2026-08-24: the console still prints far too many unnecessary info lines.
-    The two sink core already shipped (stages 1 and 2, v3.1.2); the quieting he is asking for
-    is exactly the remaining conversion sweeps plus the strictness flip, so finishing stages
-    3 to 6 is the fix and the console noise is the acceptance test.
 
 - [CC-21] 2026-08-13: Give the twelve story NPCs colour themes of their own. Parked 2026-11-02 by the owner's quality pause; it was BUILDING in Now.
   - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
